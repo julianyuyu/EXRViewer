@@ -1,0 +1,141 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathMath.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathMatrix.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathMatrixAlgo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathNamespace.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathPlane.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathPlatform.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathQuat.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathRandom.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathRoots.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathShear.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathSphere.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathVec.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathVecAlgo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathBox.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathBoxAlgo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathColor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathColorAlgo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathEuler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathExc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathExport.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathForward.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathFrame.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathFrustum.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathFrustumTest.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathFun.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathGL.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathGLU.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathHalfLimits.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathInt64.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathInterval.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathLimits.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathLine.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\openexr\IlmBase\Imath\ImathLineAlgo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\openexr\IlmBase\Imath\ImathMatrixAlgo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\openexr\IlmBase\Imath\ImathRandom.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\openexr\IlmBase\Imath\ImathShear.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\openexr\IlmBase\Imath\ImathVec.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\openexr\IlmBase\Imath\ImathBox.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\openexr\IlmBase\Imath\ImathColorAlgo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\openexr\IlmBase\Imath\ImathFun.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
