@@ -24,8 +24,47 @@ public:
 	virtual void SetViewer(ImageViewer* v) { m_pViewer = v; }
 	virtual int OnMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
+		static bool bMouseMoving = false;
 		switch (message)
 		{
+		case WM_LBUTTONUP:
+			if (bMouseMoving)
+			{
+				bMouseMoving = false;
+
+				HCURSOR cur = LoadCursor(nullptr, IDC_ARROW);
+				SetClassLongPtrW(hWnd, GCLP_HCURSOR, LONG_PTR(cur));
+				//SetCursor(cur);
+			}
+			break;
+		case WM_MOUSEMOVE:
+			if (wParam == MK_LBUTTON)
+			{
+				LONG xpos = GET_X_LPARAM(lParam);
+				LONG ypos = GET_Y_LPARAM(lParam);
+				static LONG x_offset = 0;
+				static LONG y_offset = 0;
+				if (!bMouseMoving)
+				{
+					HCURSOR cur = LoadCursor(nullptr, IDC_HAND);
+					SetClassLongPtrW(hWnd, GCLP_HCURSOR, LONG_PTR(cur));
+					//SetClassLong(hWnd, -12/*GCL_HCURSOR*/, LONG(NULL));
+					//SetCursor(cur);
+					bMouseMoving = true;
+					/*uic->*/x_offset = xpos;
+					/*uic->*/y_offset = ypos;
+				}
+				if (bMouseMoving)
+				{
+					DispRect *rc = m_pViewer->GetScrollRect();
+					if (xpos < x_offset)
+						rc->x = x_offset - xpos;
+					if (ypos < y_offset)
+						rc->y = y_offset - ypos;
+					m_pViewer->DrawImage();
+				}
+			}
+			break;
 		case WM_PAINT:
 		{
 			PAINTSTRUCT ps;
@@ -96,6 +135,17 @@ public:
 		m_pCtlWnd->GetSize(ww, hh);
 		CreateCtrls(x, y, ww, hh, hParent, hInst);
 	}
+#if 1
+	virtual void ChangetoToolWindow()
+	{
+		SetWindowLong(m_hCtlWnd, GWL_STYLE, GetWindowLong(m_hCtlWnd, GWL_STYLE) | WS_CHILD);
+		SetWindowLong(m_hCtlWnd, GWL_EXSTYLE, GetWindowLong(m_hCtlWnd, GWL_EXSTYLE) | WS_EX_LAYERED | WS_EX_TOOLWINDOW);
+
+		COLORREF crKey = 0;
+		BYTE     bAlpha = 120;
+		SetLayeredWindowAttributes(m_hCtlWnd, crKey, bAlpha, LWA_ALPHA);
+	}
+#endif
 	virtual void SetViewer(ImageViewer* v) { m_pViewer = v; }
 	virtual HWND GetHWND() { return m_hCtlWnd; }
 	virtual ~CtlPanel()

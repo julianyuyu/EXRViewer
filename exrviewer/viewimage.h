@@ -10,6 +10,9 @@
 #include <halfFunction.h>
 #include <ImathFun.h>
 
+#include <ImfStandardAttributes.h>
+//#include <ImfHeader.h>
+
 #include "loadImage.h"
 #include "scaleImage.h"
 #include "namespaceAlias.h"
@@ -19,6 +22,10 @@
 //using namespace IMF;
 //using namespace IMATH;
 //using namespace std;
+struct DispRect
+{
+	int x, y, w, h;
+};
 
 struct EXR_IMAGE
 {
@@ -27,16 +34,124 @@ struct EXR_IMAGE
 	IMF::Array<float*>			dataZ;
 	IMF::Array<unsigned int>	sampleCount;
 	bool deepComp;
+	int PartNum;
 	int width;
 	int height;
+	int disp_w;
+	int disp_h;
+	int dx;
+	int dy;
+	float ratio;
 	void *rgb;
+
+	int Scale()
+	{
+		if (ratio > 1)
+			scaleX(ratio, disp_w, disp_h, width, height, dx, dy, pixels);
+		else
+			scaleY(1 / ratio, disp_w, disp_h, width, height, dx, dy, pixels);
+	}
+
+	int Normalize()
+	{
+		normalizePixels(width, height, pixels);
+	}
+
+	int Mirror()
+	{
+		swapPixels(width, height, pixels);
+	}
+
 };
 
-inline void GetSize(IMF::Header* hdr, int& width, int& height)
+#define WARNING(message) (cerr << "Warning: " << message << endl)
+
+inline IMF::Chromaticities displayChromaticities()
 {
-	IMATH_NAMESPACE::Box2i box = hdr->dataWindow();
-	width  = box.max.x - box.min.x + 1;
-	height = box.max.y - box.min.y + 1;
+	//
+	// Get the chromaticities of the display's primaries and
+	// white point from an environment variable.  If this fails,
+	// assume chromaticities according to Rec. ITU-R BT.709.
+	//
+
+	static const char chromaticitiesEnv[] = "CTL_DISPLAY_CHROMATICITIES";
+	IMF::Chromaticities c;  // default-initialized according to Rec. 709
+
+	if (const char *chromaticities = getenv(chromaticitiesEnv))
+	{
+		IMF::Chromaticities tmp;
+
+		int n = sscanf(chromaticities,
+			" red %f %f green %f %f blue %f %f white %f %f",
+			&tmp.red.x, &tmp.red.y,
+			&tmp.green.x, &tmp.green.y,
+			&tmp.blue.x, &tmp.blue.y,
+			&tmp.white.x, &tmp.white.y);
+
+		if (n == 8)
+			c = tmp;
+		else
+			printf("Cannot parse environment variable , using default value "
+				"(chromaticities according to Rec. ITU-R BT.709).");
+	}
+	else
+	{
+		printf("Environment variable is not set; using default value (chromaticities according "
+			"to Rec. ITU-R BT.709).");
+	}
+
+	return c;
+}
+
+inline void adjustChromaticities(const IMF::Header &header,
+	const IMF::Array<IMF::Rgba> &inPixels,
+	int w, int h,
+	IMF::Array<IMF::Rgba> &outPixels)
+{
+	IMF::Chromaticities fileChroma;  // default-initialized according to Rec. 709
+
+	if (hasChromaticities(header))
+		fileChroma = chromaticities(header);
+
+	IMF::Chromaticities displayChroma = displayChromaticities();
+
+	if (fileChroma.red == displayChroma.red &&
+		fileChroma.green == displayChroma.green &&
+		fileChroma.blue == displayChroma.blue &&
+		fileChroma.white == displayChroma.white)
+	{
+		return;
+	}
+
+	IMATH::M44f M = RGBtoXYZ(fileChroma, 1) * XYZtoRGB(displayChroma, 1);
+
+	size_t numPixels = w * h;
+
+	for (size_t i = 0; i < numPixels; ++i)
+	{
+		const IMF::Rgba &in = inPixels[i];
+		IMF::Rgba &out = outPixels[i];
+
+		IMATH::V3f rgb = IMATH::V3f(in.r, in.g, in.b) * M;
+
+		out.r = rgb[0];
+		out.g = rgb[1];
+		out.b = rgb[2];
+	}
+}
+
+inline void GetSize(IMF::Header* hdr, int& width, int& height, int& disp_w, int& disp_h, int& dx, int& dy, float& ratio)
+{
+	IMATH_NAMESPACE::Box2i drect = hdr->dataWindow();
+	IMATH_NAMESPACE::Box2i disp = hdr->displayWindow();
+	width  = drect.max.x - drect.min.x + 1;
+	height = drect.max.y - drect.min.y + 1;
+
+	ratio = hdr->pixelAspectRatio();
+	dx = drect.min.x - disp.min.x;
+	dy = drect.min.y - disp.min.y;
+	disp_w = disp.max.x - disp.min.x + 1;
+	disp_h = disp.max.y - disp.min.y + 1;
 }
 
 inline void LoadExrImage(
@@ -53,7 +168,7 @@ inline void LoadExrImage(
 	if (image)
 	{
 		loadImage(fileName, channel, layer, preview, lx, ly, PartIndex, zsize, image->hdr, image->pixels, image->dataZ, image->sampleCount, image->deepComp);
-		GetSize(&image->hdr, image->width, image->height);
+		GetSize(&image->hdr, image->width, image->height, image->disp_w, image->disp_h, image->dx, image->dy, image->ratio);
 	}
 }
 
@@ -147,19 +262,20 @@ class ImageViewer
 {
 #define THREAD_NUM	4
 public:
-	ImageViewer(HWND wnd) : m_hWnd(wnd),
+	ImageViewer(HWND wnd) : m_hWnd(wnd), m_WndWidth(0), m_WndHeight(0),
+		m_bStretchDisplay(false),
 	m_gamma(1.0 / 2.2), m_exposure(-1), m_defog(0),
 	m_kneeLow(0),
 	m_kneeHigh(0),
 	m_fogR(0),
 	m_fogG(0),
 	m_fogB(0)
-
 	{
 		//ZeroMemory(&m_img, sizeof(m_img));
 		m_img.rgb = nullptr;
 		m_brush = CreateSolidBrush(RGB(255, 255, 255));
-
+		ZeroMemory(&m_StretchRect, sizeof(DispRect));
+		ZeroMemory(&m_ScrollRect, sizeof(DispRect));
 		CreateThreads(false);
 	}
 	virtual ~ImageViewer()
@@ -189,8 +305,8 @@ public:
 			CloseImage();
 		}
 #endif
-		int partIdx = 0;
-		LoadEXR(filename, 0, 0, false, -1, -1, partIdx);
+		//int partIdx = 0;
+		LoadEXR(filename, 0, 0, false, -1, -1/*, partIdx*/);
 
 		m_img.rgb = new BYTE[m_img.width * m_img.height * 3];
 
@@ -234,6 +350,56 @@ public:
 	{
 		::InvalidateRect(m_hWnd, nullptr, true);
 	}
+	DispRect* GetScrollRect() { return &m_ScrollRect; }
+	bool UpdateWndRect()
+	{
+		bool updated = false;
+		RECT rc;
+		::GetClientRect(m_hWnd, &rc);
+		int ww = rc.right - rc.left;
+		int wh = rc.bottom - rc.top;
+
+		if (ww != m_WndWidth)
+		{
+			m_WndWidth = ww;
+			updated = true;
+		}
+		if (wh != m_WndHeight)
+		{
+			m_WndHeight = wh;
+			updated = true;
+		}
+		if (updated)
+		{
+			if (m_bStretchDisplay)
+			{
+				float r_wnd = (float)m_WndWidth / (float)m_WndHeight;
+				float r_img = (float)m_img.width / (float)m_img.height;
+				if (r_wnd >= r_img)
+				{
+					m_StretchRect.h = m_WndHeight;
+					m_StretchRect.w = m_WndHeight * r_img;
+					m_StretchRect.x = (m_WndWidth - m_StretchRect.w) / 2;
+					m_StretchRect.y = 0;
+				}
+				else
+				{
+					m_StretchRect.h = (int)((float)m_WndWidth / r_img);
+					m_StretchRect.w = m_WndWidth;
+					m_StretchRect.x = 0;
+					m_StretchRect.y = (m_WndHeight - m_StretchRect.h) / 2;
+				}
+			}
+			else
+			{
+				// scroll display
+				m_ScrollRect.w = m_WndWidth;
+				m_ScrollRect.h = m_WndHeight;
+			}
+		}
+		return updated;
+	}
+
 	void DrawImage()
 	{
 		if (!m_img.rgb)
@@ -256,11 +422,18 @@ public:
 
 		SetDIBits(hMemDC, hBmp, 0, abs(bmpInfo.bmiHeader.biHeight), (BYTE *)m_img.rgb, &bmpInfo, DIB_RGB_COLORS);
 
-		BitBlt(hdc, 0, 0, bmpInfo.bmiHeader.biWidth, abs(bmpInfo.bmiHeader.biHeight), hMemDC, 0, 0, SRCCOPY);
-		//RECT rect;
-		//GetClientRect(hWnd, &rect);
-		//StretchBlt(hdc, 0, 0, rect.right - rect.left, rect.bottom - rect.top, hMemDC, 0, 0, bmpInfo.bmiHeader.biWidth, abs(bmpInfo.bmiHeader.biHeight), SRCCOPY);
-
+		UpdateWndRect();
+		if (m_bStretchDisplay)
+		{
+			SetStretchBltMode(hdc, COLORONCOLOR);
+			StretchBlt(hdc, m_StretchRect.x, m_StretchRect.y, m_StretchRect.w, m_StretchRect.h,
+				hMemDC, 0, 0, bmpInfo.bmiHeader.biWidth, abs(bmpInfo.bmiHeader.biHeight), SRCCOPY);
+		}
+		else
+		{
+			BitBlt(hdc, 0, 0, bmpInfo.bmiHeader.biWidth, abs(bmpInfo.bmiHeader.biHeight), 
+				hMemDC, m_ScrollRect.x, m_ScrollRect.y, SRCCOPY);
+		}
 		DeleteDC(hMemDC);
 		DeleteObject(hBmp);
 		ReleaseDC(m_hWnd, hdc);
@@ -403,17 +576,37 @@ public:
 
 protected:
 
+	virtual int GetPartNum(const char* filename)
+	{
+		int numparts = 0;
+
+		try
+		{
+			IMF::MultiPartInputFile *infile = new IMF::MultiPartInputFile(filename);
+			numparts = infile->parts();
+			delete infile;
+		}
+		catch (IEX_NAMESPACE::BaseExc &e)
+		{
+			printf("error: %s", e.what());
+			return 0;
+		}
+		return numparts;
+	}
 	virtual void LoadEXR(
 		const char fileName[],
 		const char channel[],
 		const char layer[],
 		bool preview,
 		int lx,
-		int ly,
-		int PartIndex)
+		int ly/*,
+		int PartIndex0*/)
 	{
+		int partNum = GetPartNum(fileName);
+		int PartIndex = 0;
 		LoadExrImage(fileName, channel, layer, preview, lx, ly, PartIndex, m_zsize, &m_img);
-		GetSize(&(m_img.hdr), m_img.width, m_img.height);
+		GetSize(&(m_img.hdr), m_img.width, m_img.height, m_img.disp_w, m_img.disp_h, m_img.dx, m_img.dy, m_img.ratio);
+		m_img.PartNum = partNum;
 	}
 	//
 	//  Dithering: Reducing the raw 16-bit pixel data to 8 bits for the
@@ -474,6 +667,11 @@ protected:
 	int m_zsize;
 	EXR_IMAGE m_img;
 	HWND m_hWnd;
+	int m_WndWidth;
+	int m_WndHeight;
+	bool m_bStretchDisplay;
+	DispRect m_StretchRect;
+	DispRect m_ScrollRect;
 	HBRUSH m_brush;
 
 	float m_gamma;
