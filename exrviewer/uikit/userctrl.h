@@ -398,12 +398,9 @@ public:
 	return (LONG)SendMessage(m_hBar, TBM_GETPOS, 0, 0);
 	}
 	}*/
-	//	void Display(LONG curValue) { SetEditboxInt(m_hTxt, curValue); }
-	//	void DisplayFloat(float curValue) { TCHAR output[MAX_STRING]={_T('\0')}; _stprintf_s(output, MAX_STRING, _T("%.2f"), curValue); SetWindowText(m_hTxt, output); }
-	virtual void Display(LONG curValue) { swprintf_s(m_szTmpTxt, MAX_STRING, L"%d", curValue); if (m_hTxt) { SetWindowText(m_hTxt, m_szTmpTxt); } SetTipText(); }
-	virtual void Display(float curValue) { swprintf_s(m_szTmpTxt, MAX_STRING, L"%.2f", curValue); if (m_hTxt) { SetWindowText(m_hTxt, m_szTmpTxt); } SetTipText(); }
-	virtual void Display(LPTSTR str) { if (m_hTxt) { SetWindowText(m_hTxt, str); } wcscpy_s(m_szTmpTxt, MAX_STRING, str); SetTipText(); }
-
+	virtual void Display(LPTSTR str) { if (m_hTxt) { SetWindowTextW(m_hTxt, str); } wcscpy_s(m_szTmpTxt, MAX_STRING, str); SetTipText(); }
+	virtual void Display(LONG curValue) { swprintf_s(m_szTmpTxt, MAX_STRING, L"%d", curValue); Display(m_szTmpTxt); }
+	virtual void Display(float curValue) { swprintf_s(m_szTmpTxt, MAX_STRING, L"%.4f", curValue); Display(m_szTmpTxt);}
 private:
 	// cb on slider moving
 	SLIDER_CB m_pCb;

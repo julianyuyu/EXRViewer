@@ -106,7 +106,7 @@ class ImageViewer
 #define THREAD_NUM	4
 public:
 	ImageViewer(HWND wnd) : m_hWnd(wnd), m_WndWidth(0), m_WndHeight(0),
-		m_bStretchDisplay(false), m_gamma(1.0 / 2.2), m_exposure(-1), m_defog(0),
+		m_bStretchDisplay(true), m_gamma(1.0 / 2.2), m_exposure(-1), m_defog(0),
 		m_kneeLow(0),m_kneeHigh(0),m_fogR(0),m_fogG(0),m_fogB(0)
 	{
 		//ZeroMemory(&m_img, sizeof(m_img));

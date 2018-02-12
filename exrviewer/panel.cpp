@@ -29,11 +29,10 @@ int ImageWnd::OnMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			{
 				HCURSOR cur = LoadCursor(nullptr, IDC_HAND);
 				SetClassLongPtrW(hWnd, GCLP_HCURSOR, LONG_PTR(cur));
-				//SetClassLong(hWnd, -12/*GCL_HCURSOR*/, LONG(NULL));
 				//SetCursor(cur);
 				bMouseMoving = true;
-				/*uic->*/x_offset = xpos;
-				/*uic->*/y_offset = ypos;
+				x_offset = xpos;
+				y_offset = ypos;
 			}
 			if (bMouseMoving)
 			{
@@ -50,7 +49,6 @@ int ImageWnd::OnMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		PAINTSTRUCT ps;
 		HDC hdc = BeginPaint(hWnd, &ps);
-		// TODO: Add any drawing code that uses hdc here...
 		EndPaint(hWnd, &ps);
 		if (m_pViewer)
 			m_pViewer->DrawImage();
@@ -60,47 +58,95 @@ int ImageWnd::OnMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-void CtlPanel::CreateCtrls(int x, int y, int w, int h, HWND hParent, HINSTANCE hInst)
+void CalcCtrlsSize(HWND hParent, int x, int y, int& w, int& h,
+	int& x1, int& x2, int& x3, int& x4, 
+	int& y1, int& y2, int& y3, int& y4,
+	int& w1, int& w2, int& w3, int& w4)
 {
 	int offset = 4;
-	int offset_2 = 8 + SLIDER_HEIGHT;
-	int x_sldr = offset, y_sldr = offset;
-	int w_sldr = w - offset * 2;
-	m_pSldExposure = new SliderSet(x_sldr, y_sldr, w_sldr,/* 0, */L"Exposure", 60, m_hCtlWnd, hInst);
-	m_pSldExposure->InitValue(-10, 10, 0.1, -2);
+	int offset_y = offset * 2 + SLIDER_HEIGHT;
+	x1 = offset;
+	y1 = offset;
+
+	RECT rc;
+	GetClientRect(hParent, &rc);
+	int w_all = rc.right - rc.left;
+	int h_all = rc.bottom - rc.top;
+
+	if (w == 0)
+		w = w_all;
+
+	if (w > TWOLINE_WIDTH_THRESHOLD)
+	{
+		int w_2 = w / 2 - offset * 8;
+		w4 = w3 = w2 = w1 = w_2;
+		x3 = x1;
+		x4 = x2 = x1 + w_2 + offset * 8;
+		y2 = y1;
+		y4 = y3 = y1 + offset_y;
+
+		// calc h
+		h = offset_y * 2;
+	}
+	else
+	{
+		w2 = w3 = w4 = w1 = w - offset * 2;
+		x2 = x3 = x4 = x1;
+		y2 = y1 + offset_y;
+		y3 = y2 + offset_y;
+		y4 = y3 + offset_y;
+
+		// calc h
+		h = offset_y * 4;
+	}
+
+	y = h_all - h;
+}
+
+void CtlPanel::CreateCtrls(int x, int y, int w, int h, HWND hParent, HINSTANCE hInst)
+{
+	int ww = w, hh = 0;
+	int xx = x, yy = y;
+	int  x1, x2, x3, x4;
+	int  y1, y2, y3, y4;
+	int  w1, w2, w3, w4;
+	CalcCtrlsSize(m_hParent, xx, yy, ww, hh, x1, x2, x3, x4, y1, y2, y3, y4, w1, w2, w3, w4);
+
+	m_pCtlWnd->Move(xx, yy, ww, hh, true);
+
+	m_pSldExposure = new SliderSet(x1, y1, w1, L"Exposure", 50, m_hCtlWnd, hInst);
+	m_pSldExposure->InitValue(-10, 10, 0.1, 0);
 	m_pSldExposure->SetCallback(OnSliding, (ULONG_PTR)this);
-	y_sldr += offset_2;
-	m_pSldDefog = new SliderSet(x_sldr, y_sldr, w_sldr,/* 0, */L"Defog", 60, m_hCtlWnd, hInst);
+
+	m_pSldDefog = new SliderSet(x2, y2, w2, L"Defog", 50, m_hCtlWnd, hInst);
 	m_pSldDefog->InitValue(0, 0.01, 0.0001, 0);
 	m_pSldDefog->SetCallback(OnSliding, (ULONG_PTR)this);
-	y_sldr += offset_2;
-	m_pSldKneeLow = new SliderSet(x_sldr, y_sldr, w_sldr,/* 0, */L"Knee Low", 60, m_hCtlWnd, hInst);
+
+	m_pSldKneeLow = new SliderSet(x3, y3, w3, L"Knee Low", 50, m_hCtlWnd, hInst);
 	m_pSldKneeLow->InitValue(-3, 3, 0.1, 0);
 	m_pSldKneeLow->SetCallback(OnSliding, (ULONG_PTR)this);
-	y_sldr += offset_2;
-	m_pSldKneeHigh = new SliderSet(x_sldr, y_sldr, w_sldr,/* 0, */L"Knee High", 60, m_hCtlWnd, hInst);
+
+	m_pSldKneeHigh = new SliderSet(x4, y4, w4, L"Knee High", 50, m_hCtlWnd, hInst);
 	m_pSldKneeHigh->InitValue(3.5, 7.5, 0.1, 5);
 	m_pSldKneeHigh->SetCallback(OnSliding, (ULONG_PTR)this);
-
-	Move(x, y, w, h, true);
 }
 
 void CtlPanel::Move(int x, int y, int w, int h, bool repaint/* = false*/)
 {
-	int offset = 4;
-	int offset_2 = 8 + SLIDER_HEIGHT;
-	int x_sldr = offset, y_sldr = offset;
-	int w_sldr = w - offset * 2;
-	m_pSldExposure->Move(x_sldr, y_sldr, w_sldr);
-	y_sldr += offset_2;
-	m_pSldDefog->Move(x_sldr, y_sldr, w_sldr);
-	y_sldr += offset_2;
-	m_pSldKneeLow->Move(x_sldr, y_sldr, w_sldr);
-	y_sldr += offset_2;
-	m_pSldKneeHigh->Move(x_sldr, y_sldr, w_sldr);
+	int ww = w, hh = 0;
+	int xx = x, yy = y;
+	int  x1, x2, x3, x4;
+	int  y1, y2, y3, y4;
+	int  w1, w2, w3, w4;
 
-	int h_entire = h;
-	m_pCtlWnd->Move(x, y, w, h_entire, repaint);
+	CalcCtrlsSize(m_hParent, xx, yy, ww, hh, x1, x2, x3, x4, y1, y2, y3, y4, w1, w2, w3, w4);
+
+	m_pSldExposure->Move(x1, y1, w1);
+	m_pSldDefog->Move(x2, y2, w2);
+	m_pSldKneeLow->Move(x3, y3, w3);
+	m_pSldKneeHigh->Move(x4, y4, w4);
+	
+	m_pCtlWnd->Move(xx, yy, ww, hh, repaint);
 }
 
 void CtlPanel::Sliding(HWND hSlider)

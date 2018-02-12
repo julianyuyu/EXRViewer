@@ -21,8 +21,8 @@
 #define MAX_LOADSTRING 100
 
 void OnCreate(HWND hWnd);
-void OnSize(HWND hWnd);
 void OnDestroy();
+void OnSize(HWND hWnd, int width, int height);
 
 BOOL FetchOpenFileName(HWND hWnd, LPSTR pszOutputName, LPSTR pszTitle = NULL);
 
@@ -120,7 +120,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
 
 	case WM_SIZE:
-		OnSize(hWnd);
+		OnSize(hWnd, LOWORD(lParam), HIWORD(lParam));
 		break;
     case WM_PAINT:
         {
@@ -160,22 +160,15 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 void OnCreate(HWND hWnd)
 {
-	int width, height;
-	GetClientSize(hWnd, width, height);
-	int w = 300, h = 128;
-	g_pPanel = new CtlPanel(0, height-h, w, h, hWnd, hInst);
-	g_pImgWnd = new ImgPanel(0, 0, width, height - h, hWnd, hInst);
-
+	g_pPanel = new CtlPanel(0, 0, 0, 0, hWnd, hInst);
+	g_pImgWnd = new ImgPanel(0, 0, 0, 0, hWnd, hInst);
 	g_pViewer = new ImageViewer(g_pImgWnd->GetHWND());
 	g_pPanel->SetViewer(g_pViewer);
 	g_pImgWnd->SetViewer(g_pViewer);
 }
 
-void OnSize(HWND hWnd)
+void OnSize(HWND hWnd, int width, int height)
 {
-	int width, height;
-	GetClientSize(hWnd, width, height);
-
 	//int right_w = g_pPanel->GetWidth();
 	//int left_w = width - right_w;
 	//g_pPanel->Move(left_w, 0, right_w, height, true);
@@ -183,8 +176,8 @@ void OnSize(HWND hWnd)
 
 	int bottom_h = g_pPanel->GetHeight();
 	int top_h = height - bottom_h;
-	g_pPanel->Move(0, top_h, width, bottom_h, true);
 	g_pImgWnd->Move(0, 0, width, top_h, true);
+	g_pPanel->Move(0, top_h, width, bottom_h, true);
 }
 
 void OnDestroy()

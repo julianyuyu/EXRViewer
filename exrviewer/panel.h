@@ -65,15 +65,16 @@ private:
 //
 class CtlPanel
 {
+#define TWOLINE_WIDTH_THRESHOLD		500
 public:
 	CtlPanel(int x, int y, int w, int h, HWND hParent = nullptr, HINSTANCE hInst = nullptr) :
-		m_pCtlWnd(nullptr), m_pViewer(nullptr)
+		m_pCtlWnd(nullptr), m_pViewer(nullptr),
+		m_pSldExposure(nullptr), m_pSldDefog(nullptr), m_pSldKneeLow(nullptr), m_pSldKneeHigh(nullptr)
 	{
+		m_hParent = hParent;
 		m_pCtlWnd = new BasicWnd(x, y, w, h, hParent, hInst, WS_CHILD | WS_VISIBLE/* | WS_BORDER*/);
 		m_hCtlWnd = m_pCtlWnd->GetHWND();
-		int ww, hh;
-		m_pCtlWnd->GetSize(ww, hh);
-		CreateCtrls(x, y, ww, hh, hParent, hInst);
+		CreateCtrls(x, y, w, h, hParent, hInst);
 	}
 #if 1
 	virtual void ChangetoToolWindow()
@@ -122,6 +123,7 @@ private:
 	virtual void CreateCtrls(int x, int y, int w, int h, HWND hParent, HINSTANCE hInst);
 	BasicWnd *m_pCtlWnd;
 	HWND m_hCtlWnd;
+	HWND m_hParent;
 	//SliderSet *m_pSldGamma;
 	SliderSet *m_pSldExposure;
 	SliderSet *m_pSldDefog;
