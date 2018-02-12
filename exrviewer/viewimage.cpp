@@ -1,7 +1,6 @@
 
 #include "stdafx.h"
 #include "viewimage.h"
-#include "winsync.h"
 
 #include <halfFunction.h>
 #include <ImfStandardAttributes.h>
@@ -157,8 +156,6 @@ void ImageViewer::LoadEXR(
 
 void ImageViewer::OpenImage(const char * filename)
 {
-	//	CreateThreads();
-#if 1
 	if (!_stricmp(filename, m_szFileName))
 		return;
 
@@ -169,8 +166,7 @@ void ImageViewer::OpenImage(const char * filename)
 		ClearImage();
 		CloseImage();
 	}
-#endif
-	//int partIdx = 0;
+
 	LoadEXR(filename, 0, 0, false, -1, -1);
 
 	m_img.rgb = new BYTE[m_img.width * m_img.height * 3];
@@ -184,32 +180,8 @@ void ImageViewer::UpdateImage()
 	if (!m_img.rgb)
 		return;
 	ComputeFogColor(m_img.pixels, m_img.width, m_img.height);
-
-	// multi-thread
-#if 1
-	for (int i = 0; i < THREAD_NUM; i++)
-	{
-		SetEvent(m_hResumeEvts[i]);
-		//m_threads[i].Resume();
-	}
-
-	WaitForMultipleObjects(THREAD_NUM, /*handles*/m_hevents, TRUE, INFINITE);
-	for (int i = 0; i < THREAD_NUM; i++)
-	{
-		//m_threads[i].Suspend();
-	}
-	//for (int i = 0; i < THREAD_NUM; i++)
-	//{
-	//	WaitForSingleObject(m_hevents[i], INFINITE);
-	//	DestroyThreads();
-	//}
-#else
-	{
-		CreateThreads();
-		WaitForMultipleObjects(THREAD_NUM, /*handles*/m_hevents, TRUE, INFINITE);
-		DestroyThreads();
-	}
-#endif
+	ResumeAllThreads();
+	WaitAllThreads();
 }
 
 bool ImageViewer::UpdateWndRect()
@@ -266,8 +238,6 @@ void ImageViewer::DrawImage()
 	if (!m_img.rgb)
 		return;
 
-	//WaitForMultipleObjects(THREAD_NUM, /*handles*/m_hevents, TRUE, INFINITE);
-
 	HDC hdc = GetDC(m_hWnd);
 	HDC hMemDC = CreateCompatibleDC(hdc);
 	HBITMAP hBmp = CreateCompatibleBitmap(hdc, m_img.width, m_img.height);
@@ -302,115 +272,52 @@ void ImageViewer::DrawImage()
 
 void ImageViewer::ClearImage()
 {
-	// clear();
 	HDC hdc = GetDC(m_hWnd);
 	RECT rc;
 	GetClientRect(m_hWnd, &rc);
-	FillRect(hdc, &rc, m_brush);
+	FillRect(hdc, &rc, m_Brush);
 	ReleaseDC(m_hWnd, hdc);
 }
 
-DWORD ImageViewer::ThreadCb(int index)
+void ImageViewer::RunThread(int index)
 {
-	while (!m_bExit)
+	if (!m_img.rgb)
+		return;
+
+	halfFunction<float> rGamma(Gamma(m_gamma, m_exposure, m_defog * m_fogR, m_kneeLow, m_kneeHigh),
+		-HALF_MAX, HALF_MAX, 0.f, 255.f, 0.f, 0.f);
+
+	halfFunction<float> gGamma(Gamma(m_gamma, m_exposure, m_defog * m_fogG, m_kneeLow, m_kneeHigh),
+		-HALF_MAX, HALF_MAX, 0.f, 255.f, 0.f, 0.f);
+
+	halfFunction<float> bGamma(Gamma(m_gamma, m_exposure, m_defog * m_fogB, m_kneeLow, m_kneeHigh),
+		-HALF_MAX, HALF_MAX, 0.f, 255.f, 0.f, 0.f);
+
+	int x_index = 0;
+	int y_index = (index);
+	int ww = m_img.width;
+	int hh = m_img.height / THREAD_NUM;
+	int x_start = x_index * ww;
+	int y_start = y_index * hh;
+	int x_end = x_start + ww;
+	int y_end = y_start + hh;
+	Imf::Rgba *pixel, *pixel0;
+	BYTE *pRgbData00 = (BYTE*)m_img.rgb;
+	BYTE *pRgbData0 = pRgbData00;
+	BYTE *pRgbData = pRgbData0;
+
+	for (int y = y_start; y < y_end && y < m_img.height; y++)
 	{
-		WaitForSingleObject(m_hResumeEvts[index], INFINITE);
-		halfFunction<float>
-			rGamma(Gamma(m_gamma,
-				m_exposure,
-				m_defog * m_fogR,
-				m_kneeLow,
-				m_kneeHigh),
-				-HALF_MAX, HALF_MAX,
-				0.f, 255.f, 0.f, 0.f);
-
-		halfFunction<float>
-			gGamma(Gamma(m_gamma,
-				m_exposure,
-				m_defog * m_fogG,
-				m_kneeLow,
-				m_kneeHigh),
-				-HALF_MAX, HALF_MAX,
-				0.f, 255.f, 0.f, 0.f);
-
-		halfFunction<float>
-			bGamma(Gamma(m_gamma,
-				m_exposure,
-				m_defog * m_fogB,
-				m_kneeLow,
-				m_kneeHigh),
-				-HALF_MAX, HALF_MAX,
-				0.f, 255.f, 0.f, 0.f);
-#if 0
-		int x_index = index & 0x1;
-		int y_index = (index >> 1) & 0x1;
-		int ww = img.width / 2;
-		int hh = img.height / 2;
-		int x_start = x_index * ww;
-		int y_start = y_index * hh;
-		int x_end = x_start + ww;
-		int y_end = y_start + hh;
-#else
-		int x_index = 0;
-		int y_index = (index);
-		int ww = m_img.width;
-		int hh = m_img.height / THREAD_NUM;
-		int x_start = x_index * ww;
-		int y_start = y_index * hh;
-		int x_end = x_start + ww;
-		int y_end = y_start + hh;
-#endif
-		Imf::Rgba *pixel, *pixel0;
-
-		BYTE *pRgbData00 = (BYTE*)m_img.rgb;
-		BYTE *pRgbData0 = pRgbData00;
-		BYTE *pRgbData = pRgbData0;
-
-		for (int y = y_start; y < y_end && y < m_img.height; y++)
+		pixel0 = &(m_img.pixels[m_img.width * y]);
+		pRgbData0 = pRgbData00 + m_img.width * y * 3;
+		for (int x = x_start; x < x_end; x++)
 		{
-			pixel0 = &(m_img.pixels[m_img.width * y]);
-			pRgbData0 = pRgbData00 + m_img.width * y * 3;
-			for (int x = x_start; x < x_end; x++)
-			{
-				pixel = pixel0 + x;
-				pRgbData = pRgbData0 + x * 3;
-				*pRgbData++ = (unsigned char)(dither(bGamma(pixel->b), x, y) /** 255.f*/);
-				*pRgbData++ = (unsigned char)(dither(gGamma(pixel->g), x, y) /** 255.f*/);
-				*pRgbData++ = (unsigned char)(dither(rGamma(pixel->r), x, y) /** 255.f*/);
-			}
+			pixel = pixel0 + x;
+			pRgbData = pRgbData0 + x * 3;
+			*pRgbData++ = (unsigned char)(dither(bGamma(pixel->b), x, y) /** 255.f*/);
+			*pRgbData++ = (unsigned char)(dither(gGamma(pixel->g), x, y) /** 255.f*/);
+			*pRgbData++ = (unsigned char)(dither(rGamma(pixel->r), x, y) /** 255.f*/);
 		}
-		SetEvent(m_hevents[index]);
-		//m_threads[index].Suspend();
-	}
-	return 0;
-}
-
-void ImageViewer::CreateThreads(bool bsuspend/* = false*/)
-{
-	m_threads = new WinThread[THREAD_NUM];
-	for (int i = 0; i < THREAD_NUM; i++)
-	{
-		m_hResumeEvts[i] = CreateEventW(nullptr, false/*auto - reset*/, false, nullptr);
-		m_hevents[i] = CreateEventW(nullptr, false/*auto - reset*/, false, nullptr);
-		m_handles[i] = m_threads[i].GetHandle();
-		m_ctxt[i].index = i;
-		m_ctxt[i].arg = this;
-
-		m_threads[i].Create(ThreadProc, &(m_ctxt[i]), bsuspend);
-	}
-	m_bExit = false;
-}
-
-void ImageViewer::DestroyThreads()
-{
-	m_bExit = true;
-	WaitForMultipleObjects(THREAD_NUM, m_handles, TRUE, INFINITE);
-
-	SAFEDELETEARRAY(m_threads);
-	for (int i = 0; i < THREAD_NUM; i++)
-	{
-		CloseHandle(m_hevents[i]);
-		CloseHandle(m_hResumeEvts[i]);
 	}
 }
 
@@ -430,4 +337,36 @@ int ImageViewer::GetPartNum(const char* filename)
 		return 0;
 	}
 	return numparts;
+}
+
+void ImageViewer::CreateThreads()
+{
+	for (int i = 0; i < THREAD_NUM; i++)
+	{
+		m_Threads[i] = new ThreadRunner(this, i);
+	}
+}
+
+void ImageViewer::DestroyThreads()
+{
+	for (int i = 0; i < THREAD_NUM; i++)
+	{
+		SAFEDELETE(m_Threads[i]);
+	}
+}
+
+void ImageViewer::ResumeAllThreads()
+{
+	for (int i = 0; i < THREAD_NUM; i++)
+	{
+		m_Threads[i]->Resume();
+	}
+}
+
+void ImageViewer::WaitAllThreads()
+{
+	for (int i = 0; i < THREAD_NUM; i++)
+	{
+		m_Threads[i]->WaitSync();
+	}
 }

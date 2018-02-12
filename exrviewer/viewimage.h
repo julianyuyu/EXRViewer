@@ -3,14 +3,15 @@
 #include "stdafx.h"
 #include <ImfArray.h>
 #include <ImfHeader.h>
-#include <ImfThreading.h>
 #include <ImathFun.h>
 #include <ImathLimits.h>
+#include <ImfThreading.h>
+#include <IlmThread.h>
+#include <IlmThreadSemaphore.h>
 
 #include "loadImage.h"
 #include "scaleImage.h"
 #include "namespaceAlias.h"
-#include "winsync.h"
 
 #define max(a,b)            (((a) > (b)) ? (a) : (b))
 
@@ -79,39 +80,26 @@ struct Gamma
 
 	float operator () (half h)
 	{
-		//
 		// Defog
-		//
-
 		float x = max(0.f, (h - d));
 
-		//
 		// Exposure
-		//
-
 		x *= m;
 
-		//
 		// Knee
-		//
-
 		if (x > kl)
 			x = kl + Knee(x - kl, f);
 
-		//
 		// Gamma
-		//
-
 		x = IMATH::Math<float>::pow(x, g);
 
-		//
 		// Scale and clamp
-		//
-
 		return IMATH_NAMESPACE::clamp(x * s, 0.f, 255.f);
 	}
 
 };
+
+class ThreadRunner;
 
 class ImageViewer
 {
@@ -123,15 +111,15 @@ public:
 	{
 		//ZeroMemory(&m_img, sizeof(m_img));
 		m_img.rgb = nullptr;
-		m_brush = CreateSolidBrush(RGB(255, 255, 255));
+		m_Brush = CreateSolidBrush(RGB(255, 255, 255));
 		ZeroMemory(&m_StretchRect, sizeof(DispRect));
 		ZeroMemory(&m_ScrollRect, sizeof(DispRect));
-		CreateThreads(false);
+		CreateThreads();
 	}
 	virtual ~ImageViewer()
 	{
 		CloseImage();
-		DeleteObject(m_brush);
+		DeleteObject(m_Brush);
 		DestroyThreads();
 	}
 
@@ -155,18 +143,11 @@ public:
 		SAFEDELETE(m_img.rgb);
 	}
 
-	static DWORD WINAPI ThreadProc(LPVOID param)
-	{
-		THREAD_CTXT* ctxt = (THREAD_CTXT *)param;
-		int index = ctxt->index;
-		ImageViewer* v = (ImageViewer*)ctxt->arg;
-		v->ThreadCb(index);
-		return 0;
-	}
-
-	virtual DWORD ThreadCb(int index);
-	virtual void CreateThreads(bool bsuspend = false);
+	virtual void CreateThreads();
 	virtual void DestroyThreads();
+	virtual void ResumeAllThreads();
+	virtual void WaitAllThreads();
+	virtual void RunThread(int index);
 
 protected:
 
@@ -222,18 +203,7 @@ protected:
 		m_fogB /= _dw * _dh;
 	}
 
-	struct THREAD_CTXT
-	{
-		int index;
-		void* arg;
-	};
-
-	bool m_bExit = false;
-	WinThread* m_threads;
-	HANDLE m_hResumeEvts[THREAD_NUM];
-	HANDLE m_hevents[THREAD_NUM];
-	HANDLE m_handles[THREAD_NUM];
-	THREAD_CTXT m_ctxt[THREAD_NUM] = {};
+	ThreadRunner *m_Threads[THREAD_NUM];
 	char m_szFileName[MAX_PATH];
 	int m_zsize;
 	EXR_IMAGE m_img;
@@ -243,7 +213,7 @@ protected:
 	bool m_bStretchDisplay;
 	DispRect m_StretchRect;
 	DispRect m_ScrollRect;
-	HBRUSH m_brush;
+	HBRUSH m_Brush;
 
 	float m_gamma;
 	float m_exposure;
@@ -253,4 +223,65 @@ protected:
 	float m_fogR;
 	float m_fogG;
 	float m_fogB;
+};
+
+
+class ThreadRunner : public IlmThread::Thread
+{
+public:
+	ThreadRunner() : IlmThread::Thread() {}
+	ThreadRunner(ImageViewer *viewer, int index) :
+		IlmThread::Thread()
+	{
+		Init(viewer, index);
+	}
+
+	virtual ~ThreadRunner()
+	{
+		Close();
+		m_Semaphore.wait();
+		CloseHandle(m_hComputeEvent);
+		CloseHandle(m_hResumeEvent);
+	}
+	virtual void Init(ImageViewer *viewer, int index)
+	{
+		m_Worker = viewer;
+		m_Index = index;
+		m_hComputeEvent = CreateEventW(nullptr, false/*auto - reset*/, false, nullptr);
+		m_hResumeEvent = CreateEventW(nullptr, false/*auto - reset*/, false, nullptr);
+		m_bExit = false;
+		start();
+	}
+	virtual void run()
+	{
+		m_Semaphore.post();
+		while (!m_bExit)
+		{
+			WaitForSingleObject(m_hResumeEvent, INFINITE);
+			m_Worker->RunThread(m_Index);
+			SetEvent(m_hComputeEvent);
+		}
+	}
+
+	virtual void Close()
+	{
+		Resume();
+		m_bExit = true;
+	}
+
+	virtual void Resume()
+	{
+		SetEvent(m_hResumeEvent);
+	}
+	virtual void WaitSync()
+	{
+		WaitForSingleObject(m_hComputeEvent, INFINITE);
+	}
+private:
+	int m_Index;
+	ImageViewer *m_Worker;
+	bool m_bExit;
+	HANDLE m_hComputeEvent;
+	HANDLE m_hResumeEvent;
+	IlmThread::Semaphore m_Semaphore;
 };

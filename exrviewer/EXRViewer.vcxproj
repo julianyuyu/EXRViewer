@@ -166,7 +166,6 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="uikit\userctrl.h" />
     <ClInclude Include="uikit\userwnd.h" />
-    <ClInclude Include="uikit\winsync.h" />
     <ClInclude Include="EXRViewer.h" />
     <ClInclude Include="viewimage.h" />
   </ItemGroup>
@@ -181,7 +180,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="uikit\userwnd.cpp" />
-    <ClCompile Include="uikit\winsync.cpp" />
     <ClCompile Include="EXRViewer.cpp" />
     <ClCompile Include="viewimage.cpp" />
   </ItemGroup>

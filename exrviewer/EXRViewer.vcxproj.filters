@@ -48,9 +48,6 @@
     <ClInclude Include="panel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="uikit\winsync.h">
-      <Filter>uikit</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -69,9 +66,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="uikit\userwnd.cpp">
-      <Filter>uikit</Filter>
-    </ClCompile>
-    <ClCompile Include="uikit\winsync.cpp">
       <Filter>uikit</Filter>
     </ClCompile>
     <ClCompile Include="panel.cpp">
