@@ -176,15 +176,15 @@ void OnSize(HWND hWnd)
 	int width, height;
 	GetClientSize(hWnd, width, height);
 
-	int right_w = g_pPanel->GetWidth();
-	int left_w = width - right_w;
-	g_pPanel->Move(left_w, 0, right_w, height, true);
-	g_pImgWnd->Move(0, 0, left_w, height, true);
+	//int right_w = g_pPanel->GetWidth();
+	//int left_w = width - right_w;
+	//g_pPanel->Move(left_w, 0, right_w, height, true);
+	//g_pImgWnd->Move(0, 0, left_w, height, true);
 
-	//int bottom_h = g_pPanel->GetHeight();
-	//int top_h = height - bottom_h;
-	//g_pPanel->Move(0, top_h, width, bottom_h, true);
-	//g_pImgWnd->Move(0, 0, width, top_h, true);
+	int bottom_h = g_pPanel->GetHeight();
+	int top_h = height - bottom_h;
+	g_pPanel->Move(0, top_h, width, bottom_h, true);
+	g_pImgWnd->Move(0, 0, width, top_h, true);
 }
 
 void OnDestroy()
