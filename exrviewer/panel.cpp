@@ -65,6 +65,7 @@ void CalcCtrlsSize(HWND hParent, int x, int y, int& w, int& h,
 {
 	int offset = 4;
 	int offset_y = offset * 2 + SLIDER_HEIGHT;
+	int sep_x = offset * 8;
 	x1 = offset;
 	y1 = offset;
 
@@ -78,10 +79,10 @@ void CalcCtrlsSize(HWND hParent, int x, int y, int& w, int& h,
 
 	if (w > TWOLINE_WIDTH_THRESHOLD)
 	{
-		int w_2 = w / 2 - offset * 8;
+		int w_2 = (w - sep_x )/ 2 - offset * 2 ;
 		w4 = w3 = w2 = w1 = w_2;
 		x3 = x1;
-		x4 = x2 = x1 + w_2 + offset * 8;
+		x4 = x2 = x1 + w_2 + sep_x + offset * 2;
 		y2 = y1;
 		y4 = y3 = y1 + offset_y;
 
