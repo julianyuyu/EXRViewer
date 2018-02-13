@@ -144,10 +144,16 @@ void LoadExrImage(
 
 void ImageViewer::LoadEXR(
 	const char fileName[],
-	const char channel[],
-	const char layer[],
 	bool preview, int lx, int ly)
 {
+	const char channel_A[2]= "A";
+	const char channel_Z[2] = "Z";
+	const char layer[2] = "";
+	const char* channel = nullptr;
+	if (m_Option.Channel == ALPHA_CHANNEL)
+		channel = channel_A;
+	else if (m_Option.Channel == DEPTH_CHANNEL)
+		channel = channel_Z;
 	int PartIndex = 0;
 	m_img.PartNum = GetPartNum(fileName);
 	LoadExrImage(fileName, channel, layer, preview, lx, ly, PartIndex, m_zsize, &m_img);
@@ -167,7 +173,7 @@ void ImageViewer::OpenImage(const char * filename)
 		CloseImage();
 	}
 
-	LoadEXR(filename, 0, 0, false, -1, -1);
+	LoadEXR(filename, false, -1, -1);
 
 	m_img.rgb = new BYTE[m_img.width * m_img.height * 3];
 
@@ -187,9 +193,9 @@ void ImageViewer::UpdateImage()
 
 void ImageViewer::UpdateWnd()
 {
-	if (m_Option.bActualImageSize)
+	if (!m_Option.bActualImageSize)
 	{
-		ShowScrollBar(m_hWnd, SB_BOTH, false);
+		m_Scroll.Show(SB_BOTH, false);
 	}
 	else
 	{
@@ -208,28 +214,20 @@ void ImageViewer::UpdateWnd()
 			bVert = true;
 		}
 
-		ShowScrollBar(m_hWnd, SB_HORZ, bHorz);
-		ShowScrollBar(m_hWnd, SB_VERT, bVert);
+		m_Scroll.Show(SB_HORZ, bHorz);
+		m_Scroll.Show(SB_VERT, bVert);
 
 		::GetClientRect(m_hWnd, &rc);
-		m_ScrollPageX = rc.right - rc.left;
-		m_ScrollPageY = rc.bottom - rc.top;
-
-		SCROLLINFO si = {};
-		si.cbSize = sizeof(SCROLLINFO);
-		si.fMask = SIF_PAGE/* | SIF_RANGE*/;
 		if (bHorz)
 		{
-			si.nPage = m_ScrollPageX;			
-			SetScrollInfo(m_hWnd, SB_HORZ, &si, true);
-			SetScrollRange(m_hWnd, SB_HORZ, 0, m_img.width, FALSE);
+			m_Scroll.SetPage(SB_HORZ, rc.right - rc.left);
+			m_Scroll.SetRange(SB_HORZ, 0, m_img.width);
 		}
 
 		if (bVert)
 		{
-			si.nPage = m_ScrollPageY;
-			SetScrollInfo(m_hWnd, SB_VERT, &si, true);
-			SetScrollRange(m_hWnd, SB_VERT, 0, m_img.height, FALSE);
+			m_Scroll.SetPage(SB_VERT, rc.bottom - rc.top);
+			m_Scroll.SetRange(SB_VERT, 0, m_img.height);
 		}
 	}
 }
@@ -255,14 +253,14 @@ bool ImageViewer::UpdateDisplayRect()
 	}
 	if (updated)
 	{
-		if (m_Option.bActualImageSize)
+		if (!m_Option.bActualImageSize)
 		{
 			float r_wnd = (float)m_WndWidth / (float)m_WndHeight;
 			float r_img = (float)m_img.width / (float)m_img.height;
 			if (r_wnd >= r_img)
 			{
 				m_StretchRect.h = m_WndHeight;
-				m_StretchRect.w = m_WndHeight * r_img;
+				m_StretchRect.w = (int)((float)m_WndHeight * r_img);
 				m_StretchRect.x = (m_WndWidth - m_StretchRect.w) / 2;
 				m_StretchRect.y = 0;
 			}
@@ -294,26 +292,32 @@ void ImageViewer::MouseScroll(bool bLButton, int xpos, int ypos)
 		if (bMouseMoving)
 		{
 			bMouseMoving = false;
-			SetCursor(false);
+			SetHandCursor(false);
 		}
 	}
 	else
 	{
-		static LONG x_offset = 0;
-		static LONG y_offset = 0;
+		static int xpos_last = 0;
+		static int ypos_last = 0;
 		if (!bMouseMoving)
 		{
 			bMouseMoving = true;
-			SetCursor(true);
-			x_offset = xpos;
-			y_offset = ypos;
+			SetHandCursor(true);
+			xpos_last = xpos;
+			ypos_last = ypos;
 		}
-		if (bMouseMoving)
+		else /*if (bMouseMoving)*/
 		{
-			if (xpos < x_offset)
-				m_ScrollRect.x = x_offset - xpos;
-			if (ypos < y_offset)
-				m_ScrollRect.y = y_offset - ypos;
+			int delta_x = xpos_last - xpos;
+			int delta_y = ypos_last - ypos;
+			xpos_last = xpos;
+			ypos_last = ypos;
+
+			m_ScrollRect.x = m_Scroll.ClampXPosToRange(m_ScrollRect.x + delta_x);
+			m_ScrollRect.y = m_Scroll.ClampYPosToRange(m_ScrollRect.y + delta_y);
+
+			m_Scroll.SetPos(SB_HORZ, m_ScrollRect.x);
+			m_Scroll.SetPos(SB_VERT, m_ScrollRect.y);
 			DrawImage();
 		}
 	}
@@ -332,12 +336,45 @@ void ImageViewer::Scroll(bool bHorz, int request, int pos)
 	else if (request == SB_PAGELEFT || request == SB_PAGERIGHT)
 	{
 		int sign = (request == SB_PAGELEFT) ? -1 : 1;
+		int v = 0; // old pos
 		if (bHorz)
-			m_ScrollRect.x = pos + sign * m_ScrollPageX;
+		{
+			v = m_Scroll.GetPos(SB_HORZ) + sign * m_Scroll.PageX();
+			//v = IntClamp(v, m_Scroll.MinX(), m_Scroll.MaxX()- m_Scroll.PageX());
+			v = m_Scroll.ClampXPosToRange(v);
+			m_ScrollRect.x = v;
+		}
 		else
-			m_ScrollRect.y = pos + sign * m_ScrollPageY;
-		SetScrollPos(m_hWnd, bHorz ? SB_HORZ : SB_VERT, pos, TRUE);
+		{
+			v = m_Scroll.GetPos(SB_VERT) + sign * m_Scroll.PageY();
+			//v = IntClamp(v, m_Scroll.MinY(), m_Scroll.MaxY() - m_Scroll.PageY());
+			v = m_Scroll.ClampYPosToRange(v);
+			m_ScrollRect.y = v;
+		}
+		m_Scroll.SetPos(bHorz ? SB_HORZ : SB_VERT, v);
 	}
+	else if (request == SB_LINELEFT || request == SB_LINERIGHT)
+	{
+		const int scroll_step = 10;
+		int sign = (request == SB_LINELEFT) ? -1 : 1;
+		int v = 0; // new pos
+		if (bHorz)
+		{
+			v = m_Scroll.GetPos(SB_HORZ) + sign * scroll_step;
+			v = IntClamp(v, m_Scroll.MinX(), m_Scroll.MaxX() - m_Scroll.PageX());
+			v = m_Scroll.ClampXPosToRange(v);
+			m_ScrollRect.x = v;
+		}
+		else
+		{
+			v = m_Scroll.GetPos(SB_VERT) + sign * scroll_step;
+			//v = IntClamp(v, m_Scroll.MinY(), m_Scroll.MaxY() - m_Scroll.PageY());
+			v = m_Scroll.ClampYPosToRange(v);
+			m_ScrollRect.y = v;
+		}
+		m_Scroll.SetPos(bHorz ? SB_HORZ : SB_VERT, v);
+	}
+
 	DrawImage();
 }
 
@@ -362,7 +399,7 @@ void ImageViewer::DrawImage()
 	SetDIBits(hMemDC, hBmp, 0, abs(bmpInfo.bmiHeader.biHeight), (BYTE *)m_img.rgb, &bmpInfo, DIB_RGB_COLORS);
 
 	UpdateDisplayRect();
-	if (m_Option.bActualImageSize)
+	if (!m_Option.bActualImageSize)
 	{
 		SetStretchBltMode(hdc, COLORONCOLOR);
 		StretchBlt(hdc, m_StretchRect.x, m_StretchRect.y, m_StretchRect.w, m_StretchRect.h,
@@ -400,31 +437,35 @@ void ImageViewer::RunThread(int index)
 	halfFunction<float> bGamma(Gamma(m_gamma, m_exposure, m_defog * m_fogB, m_kneeLow, m_kneeHigh),
 		-HALF_MAX, HALF_MAX, 0.f, 255.f, 0.f, 0.f);
 
-	int x_index = 0;
-	int y_index = (index);
 	int ww = m_img.width;
 	int hh = m_img.height / THREAD_NUM;
-	int x_start = x_index * ww;
-	int y_start = y_index * hh;
+	int x_start = 0;
+	int y_start = index * hh;
 	int x_end = x_start + ww;
 	int y_end = y_start + hh;
-	Imf::Rgba *pixel, *pixel0;
-	BYTE *pRgbData00 = (BYTE*)m_img.rgb;
-	BYTE *pRgbData0 = pRgbData00;
-	BYTE *pRgbData = pRgbData0;
+	Imf::Rgba *pixel;
+	Imf::Rgba *pixel0 = &(m_img.pixels[0]);
+	//BYTE *pRgbData00 = (BYTE*)m_img.rgb;
+	BYTE *color0 = (BYTE*)m_img.rgb;
+	BYTE *color = color0;
 
+	pixel0 += m_img.width * y_start;
+	color0 += m_img.width * y_start * 3;
 	for (int y = y_start; y < y_end && y < m_img.height; y++)
 	{
-		pixel0 = &(m_img.pixels[m_img.width * y]);
-		pRgbData0 = pRgbData00 + m_img.width * y * 3;
+		//pixel0 = &(m_img.pixels[m_img.width * y]);
+		//color0 = pRgbData00 + m_img.width * y * 3;
+		pixel = pixel0 + x_start;
+		color = color0 + x_start * 3;
 		for (int x = x_start; x < x_end; x++)
 		{
-			pixel = pixel0 + x;
-			pRgbData = pRgbData0 + x * 3;
-			*pRgbData++ = (unsigned char)(dither(bGamma(pixel->b), x, y) /** 255.f*/);
-			*pRgbData++ = (unsigned char)(dither(gGamma(pixel->g), x, y) /** 255.f*/);
-			*pRgbData++ = (unsigned char)(dither(rGamma(pixel->r), x, y) /** 255.f*/);
+			*color++ = (unsigned char)(dither(bGamma(pixel->b), x, y) /** 255.f*/);
+			*color++ = (unsigned char)(dither(gGamma(pixel->g), x, y) /** 255.f*/);
+			*color++ = (unsigned char)(dither(rGamma(pixel->r), x, y) /** 255.f*/);
+			pixel++;
 		}
+		pixel0 += m_img.width;
+		color0 += m_img.width * 3;
 	}
 }
 
@@ -478,16 +519,37 @@ void ImageViewer::WaitAllThreads()
 	}
 }
 
-int ImageViewer::Option(VIEWER_OPTION_TYPE type, int value/*=0*/)
+void ImageViewer::InitOption()
+{
+	ZeroMemory(&m_Option, sizeof(VIEWER_OPTION));
+	m_Option.Channel = RGB_CHANNEL;
+	m_Option.bActualImageSize = true;
+}
+
+int ImageViewer::SetOption(VIEWER_OPTION_TYPE type, int value/*=0*/)
 {
 	switch (type)
 	{
 	case OPT_ACTUALSIZE:
 		m_Option.bActualImageSize = !m_Option.bActualImageSize;
 		DrawImage();
-		return m_Option.bActualImageSize ? 1: 0;
+		return m_Option.bActualImageSize ? 1 : 0;
 		break;
 	default:
 		break;
 	}
+	return 0;
+}
+
+int ImageViewer::GetOption(VIEWER_OPTION_TYPE type)
+{
+	switch (type)
+	{
+	case OPT_ACTUALSIZE:
+		return m_Option.bActualImageSize ? 1 : 0;
+		break;
+	default:
+		break;
+	}
+	return 0;
 }

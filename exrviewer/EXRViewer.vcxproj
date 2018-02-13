@@ -96,6 +96,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.;res;uikit;..\openexr\IlmBase\config.windows;..\openexr\IlmBase\Half;..\openexr\IlmBase\Iex;..\openexr\IlmBase\Imath;..\openexr\IlmBase\IlmThread;..\openexr\OpenEXR\config.windows;..\openexr\OpenEXR\IlmImf</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4244;4305</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -111,6 +112,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.;res;uikit;..\openexr\IlmBase\config.windows;..\openexr\IlmBase\Half;..\openexr\IlmBase\Iex;..\openexr\IlmBase\Imath;..\openexr\IlmBase\IlmThread;..\openexr\OpenEXR\config.windows;..\openexr\OpenEXR\IlmImf</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4244;4305</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -128,6 +130,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.;res;uikit;..\openexr\IlmBase\config.windows;..\openexr\IlmBase\Half;..\openexr\IlmBase\Iex;..\openexr\IlmBase\Imath;..\openexr\IlmBase\IlmThread;..\openexr\OpenEXR\config.windows;..\openexr\OpenEXR\IlmImf</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4244;4305</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -147,6 +150,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.;res;uikit;..\openexr\IlmBase\config.windows;..\openexr\IlmBase\Half;..\openexr\IlmBase\Iex;..\openexr\IlmBase\Imath;..\openexr\IlmBase\IlmThread;..\openexr\OpenEXR\config.windows;..\openexr\OpenEXR\IlmImf</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4244;4305</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -179,6 +183,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="uikit\userctrl.cpp" />
     <ClCompile Include="uikit\userwnd.cpp" />
     <ClCompile Include="EXRViewer.cpp" />
     <ClCompile Include="viewimage.cpp" />

@@ -108,7 +108,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 				break;
 			case IDM_ACTUALSIZE:
-				SetMenuItemState(GetMenu(hWnd), IDM_ACTUALSIZE, g_pViewer->Option(OPT_ACTUALSIZE)? true: false);
+				SetMainMenuItemState(hWnd, IDM_ACTUALSIZE, g_pViewer->SetOption(OPT_ACTUALSIZE)? true: false);
 				break;
             case IDM_ABOUT:
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
@@ -168,6 +168,8 @@ void OnCreate(HWND hWnd)
 	g_pViewer = new ImageViewer(g_pImgWnd->GetHWND());
 	g_pPanel->SetViewer(g_pViewer);
 	g_pImgWnd->SetViewer(g_pViewer);
+
+	SetMainMenuItemState(hWnd, IDM_ACTUALSIZE, g_pViewer->GetOption(OPT_ACTUALSIZE) ? true : false);
 }
 
 void OnSize(HWND hWnd, int width, int height)

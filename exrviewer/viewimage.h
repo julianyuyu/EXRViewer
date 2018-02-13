@@ -12,6 +12,7 @@
 #include "loadImage.h"
 #include "scaleImage.h"
 #include "namespaceAlias.h"
+#include "userctrl.h"
 
 #define max(a,b)            (((a) > (b)) ? (a) : (b))
 
@@ -23,15 +24,23 @@ struct DispRect
 	int x, y, w, h;
 };
 
+enum IMAGE_CHANNEL_TYPE
+{
+	RGB_CHANNEL = 1,
+	ALPHA_CHANNEL,
+	DEPTH_CHANNEL,
+};
+
 enum VIEWER_OPTION_TYPE
 {
 	OPT_ACTUALSIZE = 1,
-
+	OPT_IMAGECHANNEL,
 };
 
 struct VIEWER_OPTION
 {
 	bool bActualImageSize;
+	IMAGE_CHANNEL_TYPE Channel;
 };
 
 struct EXR_IMAGE
@@ -68,7 +77,6 @@ struct EXR_IMAGE
 	{
 		swapPixels(width, height, pixels);
 	}
-
 };
 
 struct Gamma
@@ -123,15 +131,17 @@ public:
 		//ZeroMemory(&m_img, sizeof(m_img));
 		m_img.rgb = nullptr;
 		m_Brush = CreateSolidBrush(RGB(255, 255, 255));
-		ZeroMemory(&m_Option, sizeof(VIEWER_OPTION));
 		ZeroMemory(&m_StretchRect, sizeof(DispRect));
 		ZeroMemory(&m_ScrollRect, sizeof(DispRect));
 		CreateThreads();
-		ShowScrollBar(m_hWnd, SB_BOTH, false);
+		m_Scroll.Init(m_hWnd);
+		m_Scroll.Show(SB_BOTH, false);
 
 		m_hHandCursor = LoadCursor(nullptr, IDC_HAND);
 		m_hCrossCursor = LoadCursor(nullptr, IDC_CROSS);
 		m_hArrowCursor = LoadCursor(nullptr, IDC_ARROW);
+
+		InitOption();
 	}
 	virtual ~ImageViewer()
 	{
@@ -140,18 +150,21 @@ public:
 		DestroyThreads();
 	}
 
+	virtual void InitOption();
+
 	virtual inline void SetExposure(float v) { m_exposure = v; }
 	virtual inline void SetDefog(float v) { m_defog = v; }
 	virtual inline void SetKneeLow(float v) { m_kneeLow = v; }
 	virtual inline void SetKneeHigh(float v) { m_kneeHigh = v; }
-	virtual int Option(VIEWER_OPTION_TYPE type, int value = 0);
+	virtual int SetOption(VIEWER_OPTION_TYPE type, int value = 0);
+	virtual int GetOption(VIEWER_OPTION_TYPE type);
 	virtual void InvalidateRect(bool redraw = true)
 	{
 		::InvalidateRect(m_hWnd, nullptr, redraw);
 	}
-	virtual void SetCursor(bool bHand)
+	virtual void SetHandCursor(bool bHand)
 	{
-		SetClassLongPtrW(m_hWnd, GCLP_HCURSOR, LONG_PTR(bHand ? m_hHandCursor:m_hArrowCursor));
+		SetClassLongPtrW(m_hWnd, GCLP_HCURSOR, LONG_PTR(bHand ? m_hHandCursor:m_hCrossCursor));
 	}
 	virtual void Scroll(bool bHorz, int request, int pos);
 	virtual void MouseScroll(bool bLButton, int x, int y);
@@ -164,7 +177,7 @@ public:
 	virtual void CloseImage()
 	{
 		SAFEDELETE(m_img.rgb);
-		ShowScrollBar(m_hWnd, SB_BOTH, false);
+		m_Scroll.Show(SB_BOTH, false);
 	}
 
 	virtual void CreateThreads();
@@ -177,9 +190,9 @@ protected:
 
 	virtual int GetPartNum(const char* filename);
 	virtual void LoadEXR(
-		const char fileName[],
+		const char fileName[],/*
 		const char channel[],
-		const char layer[],
+		const char layer[],*/
 		bool preview,
 		int lx,
 		int ly);
@@ -237,11 +250,10 @@ protected:
 	int m_WndWidth;
 	int m_WndHeight;
 	VIEWER_OPTION m_Option;
-//	bool m_bStretchDisplay;
+
 	DispRect m_StretchRect;
 	DispRect m_ScrollRect;
-	int m_ScrollPageX;
-	int m_ScrollPageY;
+	StandardScroll m_Scroll;
 	HBRUSH m_Brush;
 	HCURSOR m_hHandCursor;
 	HCURSOR m_hArrowCursor;

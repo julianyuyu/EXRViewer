@@ -71,6 +71,9 @@
     <ClCompile Include="panel.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="uikit\userctrl.cpp">
+      <Filter>uikit</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="res\EXRViewer.rc">
