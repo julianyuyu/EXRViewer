@@ -1,49 +1,19 @@
 
-
 #include "stdafx.h"
 #include "panel.h"
 
 int ImageWnd::OnMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	static bool bMouseMoving = false;
 	switch (message)
 	{
-	case WM_LBUTTONUP:
-		if (bMouseMoving)
-		{
-			bMouseMoving = false;
-
-			HCURSOR cur = LoadCursor(nullptr, IDC_ARROW);
-			SetClassLongPtrW(hWnd, GCLP_HCURSOR, LONG_PTR(cur));
-			//SetCursor(cur);
-		}
-		break;
 	case WM_MOUSEMOVE:
-		if (wParam == MK_LBUTTON)
-		{
-			LONG xpos = GET_X_LPARAM(lParam);
-			LONG ypos = GET_Y_LPARAM(lParam);
-			static LONG x_offset = 0;
-			static LONG y_offset = 0;
-			if (!bMouseMoving)
-			{
-				HCURSOR cur = LoadCursor(nullptr, IDC_HAND);
-				SetClassLongPtrW(hWnd, GCLP_HCURSOR, LONG_PTR(cur));
-				//SetCursor(cur);
-				bMouseMoving = true;
-				x_offset = xpos;
-				y_offset = ypos;
-			}
-			if (bMouseMoving)
-			{
-				DispRect *rc = m_pViewer->GetScrollRect();
-				if (xpos < x_offset)
-					rc->x = x_offset - xpos;
-				if (ypos < y_offset)
-					rc->y = y_offset - ypos;
-				m_pViewer->DrawImage();
-			}
-		}
+		if (m_pViewer)
+			m_pViewer->MouseScroll((wParam == MK_LBUTTON), GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+		break;
+	case WM_HSCROLL:
+	case WM_VSCROLL:
+		if (m_pViewer)
+			m_pViewer->Scroll((message == WM_HSCROLL), LOWORD(wParam), HIWORD(wParam));
 		break;
 	case WM_PAINT:
 	{

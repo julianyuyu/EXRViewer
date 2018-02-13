@@ -8,41 +8,42 @@
 #define MAX_STRING	100
 
 typedef void(*SLIDER_CB)(HWND hSlider, ULONG_PTR arg);
-#if 1
-inline BOOL GetCheckBox(HWND hCheck)
+
+inline bool SetMenuItemState(HMENU hMenu, DWORD ItemId, bool bCheck)
 {
-	//Button_GetCheck
-	if (BST_CHECKED == SendMessage(hCheck, BM_GETCHECK, 0, 0))
+	if (hMenu)
 	{
-		return TRUE;
+		if (bCheck)
+		{
+			return CheckMenuItem(hMenu, ItemId, MF_BYCOMMAND | MF_CHECKED);
+		}
+		else
+		{
+			return CheckMenuItem(hMenu, ItemId, MF_BYCOMMAND | MF_UNCHECKED);
+		}
 	}
-	else
-	{
-		return FALSE;
-	}
+	return false;
 }
 
-inline void SetCheckBox(HWND hCheck, BOOL bCheck)
+inline bool GetCheckBox(HWND hCheck)
 {
-	if (bCheck)
-	{
-		SendMessage(hCheck, BM_SETCHECK, BST_CHECKED, 0);
-	}
-	else
-	{
-		SendMessage(hCheck, BM_SETCHECK, BST_UNCHECKED, 0);
-	}
+	return (BST_CHECKED == Button_GetCheck(hCheck));
 }
-#endif
 
-inline int GetIntFromString(LPCTSTR str)
+inline void SetCheckBox(HWND hCheck, bool bCheck)
+{
+	Button_SetCheck(hCheck, bCheck ? BM_SETCHECK : BST_UNCHECKED);
+
+}
+
+inline int GetIntFromString(LPCWSTR str)
 {
 	int result = 0;
 	if (str)
 	{
-		if (_tcsncmp(str, _T(""), MAX_STRING))
+		if (wcsncmp(str, L"", MAX_STRING))
 		{
-			_stscanf_s(str, _T("%d"), &result);
+			swscanf_s(str, L"%d", &result);
 		}
 	}
 	return result;
@@ -53,66 +54,66 @@ inline int GetHexFromString(LPCTSTR str)
 	int result = 0;
 	if (str)
 	{
-		if (_tcsncmp(str, _T(""), MAX_STRING))
+		if (wcsncmp(str, L"", MAX_STRING))
 		{
-			if (_stscanf_s(str, _T("0x%x"), &result) == 0)
+			if (swscanf_s(str, L"0x%x", &result) == 0)
 			{
-				_stscanf_s(str, _T("%x"), &result);
+				swscanf_s(str, L"%x", &result);
 			}
 		}
 	}
 	return result;
 }
 
-inline int GetEditboxInt(HWND hEditbox)
+inline int EditboxGetInt(HWND hEditbox)
 {
-	TCHAR input[MAX_STRING] = { 0 };
-	SendMessage(hEditbox, WM_GETTEXT, (WPARAM)MAX_STRING, (LPARAM)input);
+	WCHAR input[MAX_STRING] = {};
+	Edit_GetText(hEditbox, input, MAX_STRING);
 	return GetIntFromString(input);
 }
 
-inline float GetEditboxFloat(HWND hEditbox)
+inline float EditboxGetFloat(HWND hEditbox)
 {
-	TCHAR input[MAX_STRING] = { 0 };
+	WCHAR input[MAX_STRING] = {};
 	float result = 0.0f;
-	SendMessage(hEditbox, WM_GETTEXT, (WPARAM)MAX_STRING, (LPARAM)input);
-	if (_tcsncmp(input, _T(""), MAX_STRING))
+	Edit_GetText(hEditbox, input, MAX_STRING);
+	if (wcsncmp(input, L"", MAX_STRING))
 	{
-		_stscanf_s(input, _T("%f"), &result);
+		swscanf_s(input, L"%f", &result);
 	}
 	return result;
 }
 
-inline void SetEditboxInt(HWND hEditbox, int value)
+inline void EditboxSetInt(HWND hEditbox, int value)
 {
-	TCHAR output[MAX_STRING] = { 0 };
-	_stprintf_s(output, MAX_STRING, _T("%d"), value);
-	SetWindowText(hEditbox, output);
+	WCHAR output[MAX_STRING] = {};
+	swprintf_s(output, MAX_STRING, L"%d", value);
+	Edit_SetText(hEditbox, output);
 }
 
-inline void SetEditboxUINT(HWND hEditbox, UINT value)
+inline void EditboxSetUINT(HWND hEditbox, UINT value)
 {
-	SetEditboxInt(hEditbox, (int)value);
+	EditboxSetInt(hEditbox, (int)value);
 }
 
-inline DWORD GetEditboxHex(HWND hEditbox)
+inline DWORD EditboxGetHex(HWND hEditbox)
 {
-	TCHAR input[MAX_STRING] = { 0 };
+	WCHAR input[MAX_STRING] = {};
 	DWORD result = 0;
-	SendMessage(hEditbox, WM_GETTEXT, (WPARAM)MAX_STRING, (LPARAM)input);
-	if (_tcsncmp(input, _T(""), MAX_STRING))
+	Edit_GetText(hEditbox, input, MAX_STRING);
+	if (wcsncmp(input, L"", MAX_STRING))
 	{
-		_tcslwr_s(input, MAX_STRING);
-		_stscanf_s(input, _T("%x"), &result);
+		_wcslwr_s(input, MAX_STRING);
+		swscanf_s(input, L"%x", &result);
 	}
 	return result;
 }
 
-inline void SetEditboxHex(HWND hEditbox, DWORD value)
+inline void EditboxSetHex(HWND hEditbox, DWORD value)
 {
-	TCHAR output[MAX_STRING] = { 0 };
-	_stprintf_s(output, MAX_STRING, _T("0x%X"), value);
-	SetWindowText(hEditbox, output);
+	WCHAR output[MAX_STRING] = {};
+	swprintf_s(output, MAX_STRING, L"0x%X", value);
+	Edit_SetText(hEditbox, output);
 }
 
 class UserCtrl : public UserWnd

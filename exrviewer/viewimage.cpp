@@ -172,6 +172,7 @@ void ImageViewer::OpenImage(const char * filename)
 	m_img.rgb = new BYTE[m_img.width * m_img.height * 3];
 
 	UpdateImage();
+	//UpdateWnd();
 	DrawImage();
 }
 
@@ -184,8 +185,58 @@ void ImageViewer::UpdateImage()
 	WaitAllThreads();
 }
 
-bool ImageViewer::UpdateWndRect()
+void ImageViewer::UpdateWnd()
 {
+	if (m_Option.bActualImageSize)
+	{
+		ShowScrollBar(m_hWnd, SB_BOTH, false);
+	}
+	else
+	{
+		bool bHorz= false, bVert = false;
+		RECT rc;
+		::GetClientRect(m_hWnd, &rc);
+		int ww = rc.right - rc.left;
+		int wh = rc.bottom - rc.top;
+		if (m_img.width > m_WndWidth)
+		{
+			bHorz = true;
+		}
+
+		if (m_img.height > m_WndHeight)
+		{
+			bVert = true;
+		}
+
+		ShowScrollBar(m_hWnd, SB_HORZ, bHorz);
+		ShowScrollBar(m_hWnd, SB_VERT, bVert);
+
+		::GetClientRect(m_hWnd, &rc);
+		m_ScrollPageX = rc.right - rc.left;
+		m_ScrollPageY = rc.bottom - rc.top;
+
+		SCROLLINFO si = {};
+		si.cbSize = sizeof(SCROLLINFO);
+		si.fMask = SIF_PAGE/* | SIF_RANGE*/;
+		if (bHorz)
+		{
+			si.nPage = m_ScrollPageX;			
+			SetScrollInfo(m_hWnd, SB_HORZ, &si, true);
+			SetScrollRange(m_hWnd, SB_HORZ, 0, m_img.width, FALSE);
+		}
+
+		if (bVert)
+		{
+			si.nPage = m_ScrollPageY;
+			SetScrollInfo(m_hWnd, SB_VERT, &si, true);
+			SetScrollRange(m_hWnd, SB_VERT, 0, m_img.height, FALSE);
+		}
+	}
+}
+
+bool ImageViewer::UpdateDisplayRect()
+{
+	UpdateWnd();
 	bool updated = false;
 	RECT rc;
 	::GetClientRect(m_hWnd, &rc);
@@ -204,7 +255,7 @@ bool ImageViewer::UpdateWndRect()
 	}
 	if (updated)
 	{
-		if (m_bStretchDisplay)
+		if (m_Option.bActualImageSize)
 		{
 			float r_wnd = (float)m_WndWidth / (float)m_WndHeight;
 			float r_img = (float)m_img.width / (float)m_img.height;
@@ -226,11 +277,68 @@ bool ImageViewer::UpdateWndRect()
 		else
 		{
 			// scroll display
+			m_ScrollRect.x = 0;
+			m_ScrollRect.y = 0;
 			m_ScrollRect.w = m_WndWidth;
 			m_ScrollRect.h = m_WndHeight;
 		}
 	}
 	return updated;
+}
+
+void ImageViewer::MouseScroll(bool bLButton, int xpos, int ypos)
+{
+	static bool bMouseMoving = false;
+	if (!bLButton)
+	{
+		if (bMouseMoving)
+		{
+			bMouseMoving = false;
+			SetCursor(false);
+		}
+	}
+	else
+	{
+		static LONG x_offset = 0;
+		static LONG y_offset = 0;
+		if (!bMouseMoving)
+		{
+			bMouseMoving = true;
+			SetCursor(true);
+			x_offset = xpos;
+			y_offset = ypos;
+		}
+		if (bMouseMoving)
+		{
+			if (xpos < x_offset)
+				m_ScrollRect.x = x_offset - xpos;
+			if (ypos < y_offset)
+				m_ScrollRect.y = y_offset - ypos;
+			DrawImage();
+		}
+	}
+}
+
+void ImageViewer::Scroll(bool bHorz, int request, int pos)
+{
+	if (request == SB_THUMBTRACK || request == SB_THUMBPOSITION)
+	{
+		if (bHorz)
+			m_ScrollRect.x = pos;
+		else
+			m_ScrollRect.y = pos;
+		SetScrollPos(m_hWnd, bHorz ? SB_HORZ : SB_VERT, pos, TRUE);
+	}
+	else if (request == SB_PAGELEFT || request == SB_PAGERIGHT)
+	{
+		int sign = (request == SB_PAGELEFT) ? -1 : 1;
+		if (bHorz)
+			m_ScrollRect.x = pos + sign * m_ScrollPageX;
+		else
+			m_ScrollRect.y = pos + sign * m_ScrollPageY;
+		SetScrollPos(m_hWnd, bHorz ? SB_HORZ : SB_VERT, pos, TRUE);
+	}
+	DrawImage();
 }
 
 void ImageViewer::DrawImage()
@@ -253,8 +361,8 @@ void ImageViewer::DrawImage()
 
 	SetDIBits(hMemDC, hBmp, 0, abs(bmpInfo.bmiHeader.biHeight), (BYTE *)m_img.rgb, &bmpInfo, DIB_RGB_COLORS);
 
-	UpdateWndRect();
-	if (m_bStretchDisplay)
+	UpdateDisplayRect();
+	if (m_Option.bActualImageSize)
 	{
 		SetStretchBltMode(hdc, COLORONCOLOR);
 		StretchBlt(hdc, m_StretchRect.x, m_StretchRect.y, m_StretchRect.w, m_StretchRect.h,
@@ -262,8 +370,7 @@ void ImageViewer::DrawImage()
 	}
 	else
 	{
-		BitBlt(hdc, 0, 0, bmpInfo.bmiHeader.biWidth, abs(bmpInfo.bmiHeader.biHeight),
-			hMemDC, m_ScrollRect.x, m_ScrollRect.y, SRCCOPY);
+		BitBlt(hdc, 0,0, m_ScrollRect.w, m_ScrollRect.h, hMemDC, m_ScrollRect.x, m_ScrollRect.y, SRCCOPY);
 	}
 	DeleteDC(hMemDC);
 	DeleteObject(hBmp);
@@ -368,5 +475,19 @@ void ImageViewer::WaitAllThreads()
 	for (int i = 0; i < THREAD_NUM; i++)
 	{
 		m_Threads[i]->WaitSync();
+	}
+}
+
+int ImageViewer::Option(VIEWER_OPTION_TYPE type, int value/*=0*/)
+{
+	switch (type)
+	{
+	case OPT_ACTUALSIZE:
+		m_Option.bActualImageSize = !m_Option.bActualImageSize;
+		DrawImage();
+		return m_Option.bActualImageSize ? 1: 0;
+		break;
+	default:
+		break;
 	}
 }

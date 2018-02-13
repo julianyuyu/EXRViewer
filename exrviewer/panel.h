@@ -29,7 +29,8 @@ public:
 	ImgPanel(int x, int y, int w, int h, HWND hParent = nullptr, HINSTANCE hInst = nullptr) :
 		m_pImgWnd(nullptr)
 	{
-		m_pImgWnd = new ImageWnd(x, y, w, h, hParent, hInst, WS_CHILD | WS_VISIBLE/* | WS_BORDER*/);
+		m_pImgWnd = new ImageWnd(x, y, w, h, hParent, hInst, 
+			WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_HSCROLL/* | WS_BORDER*/);
 		m_hImgWnd = m_pImgWnd->GetHWND();
 	}
 	virtual void SetViewer(ImageViewer* v) { m_pImgWnd->SetViewer(v); }

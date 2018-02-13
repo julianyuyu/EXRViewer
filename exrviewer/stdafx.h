@@ -13,6 +13,8 @@
 #include <malloc.h>
 #include <memory.h>
 #include <tchar.h>
+#include <wchar.h>
+#include <string.h>
 #include <windows.h>
 
 #define WSTR_MATCH(wstr1, wstr2)	(!wcscmp((LPCWSTR)(wstr1), (LPCWSTR)(wstr2)))

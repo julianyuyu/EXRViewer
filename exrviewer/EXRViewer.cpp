@@ -107,6 +107,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				g_pViewer->OpenImage(filename);
 			}
 				break;
+			case IDM_ACTUALSIZE:
+				SetMenuItemState(GetMenu(hWnd), IDM_ACTUALSIZE, g_pViewer->Option(OPT_ACTUALSIZE)? true: false);
+				break;
             case IDM_ABOUT:
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
                 break;

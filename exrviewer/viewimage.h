@@ -23,6 +23,17 @@ struct DispRect
 	int x, y, w, h;
 };
 
+enum VIEWER_OPTION_TYPE
+{
+	OPT_ACTUALSIZE = 1,
+
+};
+
+struct VIEWER_OPTION
+{
+	bool bActualImageSize;
+};
+
 struct EXR_IMAGE
 {
 	IMF::Header hdr;
@@ -106,15 +117,21 @@ class ImageViewer
 #define THREAD_NUM	4
 public:
 	ImageViewer(HWND wnd) : m_hWnd(wnd), m_WndWidth(0), m_WndHeight(0),
-		m_bStretchDisplay(true), m_gamma(1.0 / 2.2), m_exposure(-1), m_defog(0),
+		/*m_bStretchDisplay(false), */m_gamma(1.0 / 2.2), m_exposure(-1), m_defog(0),
 		m_kneeLow(0),m_kneeHigh(0),m_fogR(0),m_fogG(0),m_fogB(0)
 	{
 		//ZeroMemory(&m_img, sizeof(m_img));
 		m_img.rgb = nullptr;
 		m_Brush = CreateSolidBrush(RGB(255, 255, 255));
+		ZeroMemory(&m_Option, sizeof(VIEWER_OPTION));
 		ZeroMemory(&m_StretchRect, sizeof(DispRect));
 		ZeroMemory(&m_ScrollRect, sizeof(DispRect));
 		CreateThreads();
+		ShowScrollBar(m_hWnd, SB_BOTH, false);
+
+		m_hHandCursor = LoadCursor(nullptr, IDC_HAND);
+		m_hCrossCursor = LoadCursor(nullptr, IDC_CROSS);
+		m_hArrowCursor = LoadCursor(nullptr, IDC_ARROW);
 	}
 	virtual ~ImageViewer()
 	{
@@ -127,13 +144,19 @@ public:
 	virtual inline void SetDefog(float v) { m_defog = v; }
 	virtual inline void SetKneeLow(float v) { m_kneeLow = v; }
 	virtual inline void SetKneeHigh(float v) { m_kneeHigh = v; }
-
-	virtual void InvalidateRect()
+	virtual int Option(VIEWER_OPTION_TYPE type, int value = 0);
+	virtual void InvalidateRect(bool redraw = true)
 	{
-		::InvalidateRect(m_hWnd, nullptr, true);
+		::InvalidateRect(m_hWnd, nullptr, redraw);
 	}
-	virtual DispRect* GetScrollRect() { return &m_ScrollRect; }
-	virtual bool UpdateWndRect();
+	virtual void SetCursor(bool bHand)
+	{
+		SetClassLongPtrW(m_hWnd, GCLP_HCURSOR, LONG_PTR(bHand ? m_hHandCursor:m_hArrowCursor));
+	}
+	virtual void Scroll(bool bHorz, int request, int pos);
+	virtual void MouseScroll(bool bLButton, int x, int y);
+	//virtual DispRect* GetScrollRect() { return &m_ScrollRect; }
+
 	virtual void OpenImage(const char * filename);
 	virtual void UpdateImage();
 	virtual void DrawImage();
@@ -141,6 +164,7 @@ public:
 	virtual void CloseImage()
 	{
 		SAFEDELETE(m_img.rgb);
+		ShowScrollBar(m_hWnd, SB_BOTH, false);
 	}
 
 	virtual void CreateThreads();
@@ -202,6 +226,8 @@ protected:
 		m_fogG /= _dw * _dh;
 		m_fogB /= _dw * _dh;
 	}
+	virtual bool UpdateDisplayRect();
+	virtual void UpdateWnd();
 
 	ThreadRunner *m_Threads[THREAD_NUM];
 	char m_szFileName[MAX_PATH];
@@ -210,10 +236,16 @@ protected:
 	HWND m_hWnd;
 	int m_WndWidth;
 	int m_WndHeight;
-	bool m_bStretchDisplay;
+	VIEWER_OPTION m_Option;
+//	bool m_bStretchDisplay;
 	DispRect m_StretchRect;
 	DispRect m_ScrollRect;
+	int m_ScrollPageX;
+	int m_ScrollPageY;
 	HBRUSH m_Brush;
+	HCURSOR m_hHandCursor;
+	HCURSOR m_hArrowCursor;
+	HCURSOR m_hCrossCursor;
 
 	float m_gamma;
 	float m_exposure;
