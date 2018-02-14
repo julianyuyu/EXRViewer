@@ -29,6 +29,7 @@ BOOL FetchOpenFileName(HWND hWnd, LPSTR pszOutputName, LPSTR pszTitle = NULL);
 HINSTANCE hInst;
 WCHAR szTitle[MAX_LOADSTRING];
 WCHAR szWindowClass[MAX_LOADSTRING];
+MenuMan *g_pMenuMan = nullptr;
 CtlPanel *g_pPanel = nullptr;
 ImgPanel *g_pImgWnd = nullptr;
 ImageViewer *g_pViewer = nullptr;
@@ -108,7 +109,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 				break;
 			case IDM_ACTUALSIZE:
-				SetMainMenuItemState(hWnd, IDM_ACTUALSIZE, g_pViewer->SetOption(OPT_ACTUALSIZE)? true: false);
+				g_pMenuMan->CheckMainItem(IDM_ACTUALSIZE, g_pViewer->GetOption(OPT_ACTUALSIZE) ? true : false);
 				break;
             case IDM_ABOUT:
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
@@ -163,13 +164,15 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 void OnCreate(HWND hWnd)
 {
+	g_pMenuMan = new MenuMan(hWnd);
 	g_pPanel = new CtlPanel(0, 0, 0, 0, hWnd, hInst);
 	g_pImgWnd = new ImgPanel(0, 0, 0, 0, hWnd, hInst);
 	g_pViewer = new ImageViewer(g_pImgWnd->GetHWND());
+	g_pViewer->SetMenuMan(g_pMenuMan);
 	g_pPanel->SetViewer(g_pViewer);
 	g_pImgWnd->SetViewer(g_pViewer);
 
-	SetMainMenuItemState(hWnd, IDM_ACTUALSIZE, g_pViewer->GetOption(OPT_ACTUALSIZE) ? true : false);
+	g_pMenuMan->CheckMainItem(IDM_ACTUALSIZE, g_pViewer->GetOption(OPT_ACTUALSIZE) ? true : false);
 }
 
 void OnSize(HWND hWnd, int width, int height)

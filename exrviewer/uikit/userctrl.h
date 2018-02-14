@@ -108,6 +108,40 @@ inline void EditboxSetHex(HWND hEditbox, DWORD value)
 	Edit_SetText(hEditbox, output);
 }
 
+class MenuMan
+{
+public:
+	MenuMan() {}
+	MenuMan(HWND hwnd) { Init(hwnd); }
+	~MenuMan() {}
+	void Init(HWND hwnd)
+	{
+		m_hWnd = hwnd;
+		m_hMainMenu = ::GetMenu(m_hWnd);
+	}
+	HMENU GetSubItem(int Pos)
+	{
+		return ::GetSubMenu(m_hMainMenu, Pos);
+	}
+	void CheckItem(HMENU hMenu, DWORD ItemId, bool bCheck);
+	void CheckMainItem(DWORD ItemId, bool bCheck)
+	{
+		CheckItem(m_hMainMenu, ItemId, bCheck);
+	}
+	void AppendItem(HMENU hMenu, DWORD ItemId, PWSTR str)
+	{
+		::AppendMenuW(hMenu, MF_STRING, ItemId, str);
+	}
+	void RemoveItem(HMENU hMenu, DWORD ItemId)
+	{
+		::RemoveMenu(hMenu, ItemId, MF_BYCOMMAND);
+	}
+
+protected:
+	HWND m_hWnd;
+	HMENU m_hMainMenu;
+};
+
 class StandardScroll
 {
 public:

@@ -158,6 +158,7 @@ public:
 	virtual inline void SetKneeHigh(float v) { m_kneeHigh = v; }
 	virtual int SetOption(VIEWER_OPTION_TYPE type, int value = 0);
 	virtual int GetOption(VIEWER_OPTION_TYPE type);
+	virtual void SetMenuMan(MenuMan* m) { m_pMenuMan = m; }
 	virtual void InvalidateRect(bool redraw = true)
 	{
 		::InvalidateRect(m_hWnd, nullptr, redraw);
@@ -176,6 +177,7 @@ public:
 	virtual void ClearImage();
 	virtual void CloseImage()
 	{
+		RemoveEXRPartIndexMenu();
 		SAFEDELETE(m_img.rgb);
 		m_Scroll.Show(SB_BOTH, false);
 	}
@@ -187,7 +189,9 @@ public:
 	virtual void RunThread(int index);
 
 protected:
-
+	virtual void AppendEXRPartIndexMenu();
+	virtual void RemoveEXRPartIndexMenu();
+	
 	virtual int GetPartNum(const char* filename);
 	virtual void LoadEXR(
 		const char fileName[],/*
@@ -250,6 +254,7 @@ protected:
 	int m_WndWidth;
 	int m_WndHeight;
 	VIEWER_OPTION m_Option;
+	MenuMan* m_pMenuMan;
 
 	DispRect m_StretchRect;
 	DispRect m_ScrollRect;

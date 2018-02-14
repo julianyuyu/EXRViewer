@@ -23,6 +23,21 @@ void SetMainMenuItemState(HWND hWnd, DWORD ItemId, bool bCheck)
 	SetMenuItemState(GetMenu(hWnd), ItemId, bCheck);
 }
 
+void MenuMan::CheckItem(HMENU hMenu, DWORD ItemId, bool bCheck)
+{
+	if (hMenu)
+	{
+		if (bCheck)
+		{
+			::CheckMenuItem(hMenu, ItemId, MF_BYCOMMAND | MF_CHECKED);
+		}
+		else
+		{
+			::CheckMenuItem(hMenu, ItemId, MF_BYCOMMAND | MF_UNCHECKED);
+		}
+	}
+}
+
 int SliderSet::OnMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)

@@ -148,12 +148,13 @@ void ImageViewer::LoadEXR(
 {
 	const char channel_A[2]= "A";
 	const char channel_Z[2] = "Z";
-	const char layer[2] = "";
 	const char* channel = nullptr;
+	const char* layer = nullptr;
 	if (m_Option.Channel == ALPHA_CHANNEL)
 		channel = channel_A;
 	else if (m_Option.Channel == DEPTH_CHANNEL)
 		channel = channel_Z;
+
 	int PartIndex = 0;
 	m_img.PartNum = GetPartNum(fileName);
 	LoadExrImage(fileName, channel, layer, preview, lx, ly, PartIndex, m_zsize, &m_img);
@@ -174,7 +175,7 @@ void ImageViewer::OpenImage(const char * filename)
 	}
 
 	LoadEXR(filename, false, -1, -1);
-
+	AppendEXRPartIndexMenu();
 	m_img.rgb = new BYTE[m_img.width * m_img.height * 3];
 
 	UpdateImage();
@@ -485,6 +486,35 @@ int ImageViewer::GetPartNum(const char* filename)
 		return 0;
 	}
 	return numparts;
+}
+
+void ImageViewer::RemoveEXRPartIndexMenu()
+{
+	const int IDM_PARTIDX_0 = 64000;
+	const int IMG_MENU_POS = 2;
+	if (m_img.PartNum >= 1)
+	{
+		HMENU hImgMenu = m_pMenuMan->GetSubItem(IMG_MENU_POS);
+		for (int i = 0; i < m_img.PartNum; ++i)
+		{
+			m_pMenuMan->RemoveItem(hImgMenu, IDM_PARTIDX_0 + i);
+		}
+	}
+}
+void ImageViewer::AppendEXRPartIndexMenu()
+{
+	const int IDM_PARTIDX_0 = 64000;
+	const int IMG_MENU_POS = 2;
+	if (m_img.PartNum >= 1)
+	{
+		HMENU hImgMenu = m_pMenuMan->GetSubItem(IMG_MENU_POS);
+		WCHAR ch[20] = {};
+		for (int i = 0; i < m_img.PartNum; ++i)
+		{
+			swprintf_s(ch, 20, L"Part Index %d", i);
+			m_pMenuMan->AppendItem(hImgMenu, IDM_PARTIDX_0+i, ch);
+		}
+	}
 }
 
 void ImageViewer::CreateThreads()

@@ -7,7 +7,7 @@ It use Win32 window system and GDI instead of 3rd-party graphics libs for image 
 2. Open projects with Visual Studio 2015.
 
 ## Snapshot
-<img width="516" src="exrviewer.png" />
+<img width="630" src="exrviewer.png" />
 
 ## Dependency
 - IlmBase
