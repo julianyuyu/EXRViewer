@@ -161,10 +161,21 @@ public:
 		m_PageX = m_PageY = 0;
 		m_MinX = m_MinY = 0;
 		m_MaxX = m_MaxY = 0;
+		m_bShowVert = false;
+		m_bShowHorz = false;
 	}
 
+	bool IsVertScroll() { return m_bShowVert; }
+	bool IsHorzScroll() { return m_bShowHorz; }
 	bool Show(int barId, bool bShow)
 	{
+		//m_bShowVert = false;
+		//m_bShowHorz = false;
+		//if (bShow)
+		{
+			m_bShowVert = bShow && (barId == SB_BOTH || barId == SB_VERT);
+			m_bShowHorz = bShow && (barId == SB_BOTH || barId == SB_HORZ);
+		}
 		return ::ShowScrollBar(m_hWnd, barId, bShow) ? true : false;
 	}
 	int GetPos(int barId)
@@ -235,6 +246,8 @@ protected:
 	int m_PageX, m_PageY;
 	int m_MinX, m_MinY;
 	int m_MaxX, m_MaxY;
+	bool m_bShowVert;
+	bool m_bShowHorz;
 };
 
 class UserCtrl : public UserWnd

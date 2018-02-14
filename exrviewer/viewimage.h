@@ -133,6 +133,8 @@ public:
 		m_Brush = CreateSolidBrush(RGB(255, 255, 255));
 		ZeroMemory(&m_StretchRect, sizeof(DispRect));
 		ZeroMemory(&m_ScrollRect, sizeof(DispRect));
+		m_ScrollPosX = 0;
+		m_ScrollPosY = 0;
 		CreateThreads();
 		m_Scroll.Init(m_hWnd);
 		m_Scroll.Show(SB_BOTH, false);
@@ -169,7 +171,6 @@ public:
 	}
 	virtual void Scroll(bool bHorz, int request, int pos);
 	virtual void MouseScroll(bool bLButton, int x, int y);
-	//virtual DispRect* GetScrollRect() { return &m_ScrollRect; }
 
 	virtual void OpenImage(const char * filename);
 	virtual void UpdateImage();
@@ -258,6 +259,8 @@ protected:
 
 	DispRect m_StretchRect;
 	DispRect m_ScrollRect;
+	int m_ScrollPosX;
+	int m_ScrollPosY;
 	StandardScroll m_Scroll;
 	HBRUSH m_Brush;
 	HCURSOR m_hHandCursor;

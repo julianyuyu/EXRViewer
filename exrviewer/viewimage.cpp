@@ -280,6 +280,19 @@ bool ImageViewer::UpdateDisplayRect()
 			m_ScrollRect.y = 0;
 			m_ScrollRect.w = m_WndWidth;
 			m_ScrollRect.h = m_WndHeight;
+
+			if (!m_Scroll.IsHorzScroll())
+			{
+				m_ScrollRect.x = (m_WndWidth - m_img.width) / 2;
+				m_ScrollRect.w = m_img.width;
+			}
+			if (!m_Scroll.IsVertScroll())
+			{
+				m_ScrollRect.y = (m_WndHeight - m_img.height) / 2;
+				m_ScrollRect.h = m_img.height;
+			}
+			m_ScrollPosX = 0;
+			m_ScrollPosY = 0;
 		}
 	}
 	return updated;
@@ -314,11 +327,16 @@ void ImageViewer::MouseScroll(bool bLButton, int xpos, int ypos)
 			xpos_last = xpos;
 			ypos_last = ypos;
 
-			m_ScrollRect.x = m_Scroll.ClampXPosToRange(m_ScrollRect.x + delta_x);
-			m_ScrollRect.y = m_Scroll.ClampYPosToRange(m_ScrollRect.y + delta_y);
-
-			m_Scroll.SetPos(SB_HORZ, m_ScrollRect.x);
-			m_Scroll.SetPos(SB_VERT, m_ScrollRect.y);
+			if (m_Scroll.IsHorzScroll())
+			{
+				m_ScrollPosX = m_Scroll.ClampXPosToRange(m_ScrollPosX + delta_x);
+				m_Scroll.SetPos(SB_HORZ, m_ScrollPosX);
+			}
+			if (m_Scroll.IsVertScroll())
+			{
+				m_ScrollPosY = m_Scroll.ClampYPosToRange(m_ScrollPosY + delta_y);
+				m_Scroll.SetPos(SB_VERT, m_ScrollPosY);
+			}
 			DrawImage();
 		}
 	}
@@ -329,9 +347,9 @@ void ImageViewer::Scroll(bool bHorz, int request, int pos)
 	if (request == SB_THUMBTRACK || request == SB_THUMBPOSITION)
 	{
 		if (bHorz)
-			m_ScrollRect.x = pos;
+			m_ScrollPosX = pos;
 		else
-			m_ScrollRect.y = pos;
+			m_ScrollPosY = pos;
 		SetScrollPos(m_hWnd, bHorz ? SB_HORZ : SB_VERT, pos, TRUE);
 	}
 	else if (request == SB_PAGELEFT || request == SB_PAGERIGHT)
@@ -343,14 +361,14 @@ void ImageViewer::Scroll(bool bHorz, int request, int pos)
 			v = m_Scroll.GetPos(SB_HORZ) + sign * m_Scroll.PageX();
 			//v = IntClamp(v, m_Scroll.MinX(), m_Scroll.MaxX()- m_Scroll.PageX());
 			v = m_Scroll.ClampXPosToRange(v);
-			m_ScrollRect.x = v;
+			m_ScrollPosX = v;
 		}
 		else
 		{
 			v = m_Scroll.GetPos(SB_VERT) + sign * m_Scroll.PageY();
 			//v = IntClamp(v, m_Scroll.MinY(), m_Scroll.MaxY() - m_Scroll.PageY());
 			v = m_Scroll.ClampYPosToRange(v);
-			m_ScrollRect.y = v;
+			m_ScrollPosY = v;
 		}
 		m_Scroll.SetPos(bHorz ? SB_HORZ : SB_VERT, v);
 	}
@@ -364,14 +382,14 @@ void ImageViewer::Scroll(bool bHorz, int request, int pos)
 			v = m_Scroll.GetPos(SB_HORZ) + sign * scroll_step;
 			v = IntClamp(v, m_Scroll.MinX(), m_Scroll.MaxX() - m_Scroll.PageX());
 			v = m_Scroll.ClampXPosToRange(v);
-			m_ScrollRect.x = v;
+			m_ScrollPosX = v;
 		}
 		else
 		{
 			v = m_Scroll.GetPos(SB_VERT) + sign * scroll_step;
 			//v = IntClamp(v, m_Scroll.MinY(), m_Scroll.MaxY() - m_Scroll.PageY());
 			v = m_Scroll.ClampYPosToRange(v);
-			m_ScrollRect.y = v;
+			m_ScrollPosY = v;
 		}
 		m_Scroll.SetPos(bHorz ? SB_HORZ : SB_VERT, v);
 	}
@@ -408,7 +426,8 @@ void ImageViewer::DrawImage()
 	}
 	else
 	{
-		BitBlt(hdc, 0,0, m_ScrollRect.w, m_ScrollRect.h, hMemDC, m_ScrollRect.x, m_ScrollRect.y, SRCCOPY);
+		BitBlt(hdc, m_ScrollRect.x, m_ScrollRect.y, m_ScrollRect.w, m_ScrollRect.h, 
+			hMemDC, m_ScrollPosX, m_ScrollPosY, SRCCOPY);
 	}
 	DeleteDC(hMemDC);
 	DeleteObject(hBmp);
@@ -444,18 +463,15 @@ void ImageViewer::RunThread(int index)
 	int y_start = index * hh;
 	int x_end = x_start + ww;
 	int y_end = y_start + hh;
-	Imf::Rgba *pixel;
 	Imf::Rgba *pixel0 = &(m_img.pixels[0]);
-	//BYTE *pRgbData00 = (BYTE*)m_img.rgb;
+	Imf::Rgba *pixel;
 	BYTE *color0 = (BYTE*)m_img.rgb;
-	BYTE *color = color0;
+	BYTE *color;
 
 	pixel0 += m_img.width * y_start;
 	color0 += m_img.width * y_start * 3;
 	for (int y = y_start; y < y_end && y < m_img.height; y++)
 	{
-		//pixel0 = &(m_img.pixels[m_img.width * y]);
-		//color0 = pRgbData00 + m_img.width * y * 3;
 		pixel = pixel0 + x_start;
 		color = color0 + x_start * 3;
 		for (int x = x_start; x < x_end; x++)
