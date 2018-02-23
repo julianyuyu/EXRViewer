@@ -5,9 +5,6 @@
 #include <ImfHeader.h>
 #include <ImathFun.h>
 #include <ImathLimits.h>
-#include <ImfThreading.h>
-#include <IlmThread.h>
-#include <IlmThreadSemaphore.h>
 
 #include "loadImage.h"
 #include "scaleImage.h"
@@ -16,8 +13,8 @@
 
 #define max(a,b)            (((a) > (b)) ? (a) : (b))
 
-inline float Knee(double x, double f);
-inline float FindKneeF(float x, float y);
+float Knee(double x, double f);
+float FindKneeF(float x, float y);
 
 struct DispRect
 {
@@ -29,6 +26,13 @@ enum IMAGE_CHANNEL_TYPE
 	RGB_CHANNEL = 1,
 	ALPHA_CHANNEL,
 	DEPTH_CHANNEL,
+};
+
+enum VIEWER_CURSOR_TYPE
+{
+	CUR_ARROW = 0,
+	CUR_HAND,
+	CUR_CROSS,
 };
 
 enum VIEWER_OPTION_TYPE
@@ -50,6 +54,7 @@ struct EXR_IMAGE
 	IMF::Array<float*>			dataZ;
 	IMF::Array<unsigned int>	sampleCount;
 	bool deepComp;
+	int zsize;
 	int PartNum;
 	int width;
 	int height;
@@ -115,7 +120,6 @@ struct Gamma
 		// Scale and clamp
 		return IMATH_NAMESPACE::clamp(x * s, 0.f, 255.f);
 	}
-
 };
 
 class ThreadRunner;
@@ -124,8 +128,8 @@ class ImageViewer
 {
 #define THREAD_NUM	4
 public:
-	ImageViewer(HWND wnd) : m_hWnd(wnd), m_WndWidth(0), m_WndHeight(0),
-		/*m_bStretchDisplay(false), */m_gamma(1.0 / 2.2), m_exposure(-1), m_defog(0),
+	ImageViewer(HWND wnd) : m_hWnd(wnd), m_WndWidth(0), m_WndHeight(0), m_bImageLoaded(false),
+		m_CurType(CUR_ARROW), m_gamma(1.0 / 2.2), m_exposure(-1), m_defog(0),
 		m_kneeLow(0),m_kneeHigh(0),m_fogR(0),m_fogG(0),m_fogB(0)
 	{
 		//ZeroMemory(&m_img, sizeof(m_img));
@@ -165,20 +169,31 @@ public:
 	{
 		::InvalidateRect(m_hWnd, nullptr, redraw);
 	}
-	virtual void SetHandCursor(bool bHand)
+	virtual void ChangeCursor(VIEWER_CURSOR_TYPE cur)
 	{
-		SetClassLongPtrW(m_hWnd, GCLP_HCURSOR, LONG_PTR(bHand ? m_hHandCursor:m_hCrossCursor));
+		if (m_CurType != cur)
+		{
+			m_CurType = cur;
+			HCURSOR cc = (cur == CUR_HAND) ? m_hHandCursor : ((cur == CUR_CROSS) ? m_hCrossCursor : m_hArrowCursor);
+			SetClassLongPtrW(m_hWnd, GCLP_HCURSOR, LONG_PTR(cc));
+		}
 	}
 	virtual void Scroll(bool bHorz, int request, int pos);
 	virtual void MouseScroll(bool bLButton, int x, int y);
+	virtual bool UpdateDisplayRect();
+	virtual void ShowPixelInfo(int xpos, int ypos);
 
-	virtual void OpenImage(const char * filename);
+	virtual void OpenImage(const wchar_t * filename);
 	virtual void UpdateImage();
 	virtual void DrawImage();
 	virtual void ClearImage();
 	virtual void CloseImage()
 	{
+		m_bImageLoaded = false;
+
 		RemoveEXRPartIndexMenu();
+
+		m_szFileName[0] = L'\0';
 		SAFEDELETE(m_img.rgb);
 		m_Scroll.Show(SB_BOTH, false);
 	}
@@ -194,13 +209,7 @@ protected:
 	virtual void RemoveEXRPartIndexMenu();
 	
 	virtual int GetPartNum(const char* filename);
-	virtual void LoadEXR(
-		const char fileName[],/*
-		const char channel[],
-		const char layer[],*/
-		bool preview,
-		int lx,
-		int ly);
+	virtual bool LoadEXR(const char* fileName, bool preview, int lx, int ly);
 	//
 	//  Dithering: Reducing the raw 16-bit pixel data to 8 bits for the
 	//  OpenGL frame buffer can sometimes lead to contouring in smooth
@@ -244,28 +253,29 @@ protected:
 		m_fogG /= _dw * _dh;
 		m_fogB /= _dw * _dh;
 	}
-	virtual bool UpdateDisplayRect();
-	virtual void UpdateWnd();
+	virtual void UpdateScrollWnd();
 
 	ThreadRunner *m_Threads[THREAD_NUM];
-	char m_szFileName[MAX_PATH];
-	int m_zsize;
+	wchar_t m_szFileName[MAX_PATH];
+	bool m_bImageLoaded;
 	EXR_IMAGE m_img;
 	HWND m_hWnd;
 	int m_WndWidth;
 	int m_WndHeight;
-	VIEWER_OPTION m_Option;
 	MenuMan* m_pMenuMan;
 
 	DispRect m_StretchRect;
 	DispRect m_ScrollRect;
 	int m_ScrollPosX;
 	int m_ScrollPosY;
-	StandardScroll m_Scroll;
+	StandardScrollBar m_Scroll;
+
 	HBRUSH m_Brush;
 	HCURSOR m_hHandCursor;
 	HCURSOR m_hArrowCursor;
 	HCURSOR m_hCrossCursor;
+	VIEWER_CURSOR_TYPE m_CurType;
+	VIEWER_OPTION m_Option;
 
 	float m_gamma;
 	float m_exposure;
@@ -275,65 +285,4 @@ protected:
 	float m_fogR;
 	float m_fogG;
 	float m_fogB;
-};
-
-
-class ThreadRunner : public IlmThread::Thread
-{
-public:
-	ThreadRunner() : IlmThread::Thread() {}
-	ThreadRunner(ImageViewer *viewer, int index) :
-		IlmThread::Thread()
-	{
-		Init(viewer, index);
-	}
-
-	virtual ~ThreadRunner()
-	{
-		Close();
-		m_Semaphore.wait();
-		CloseHandle(m_hComputeEvent);
-		CloseHandle(m_hResumeEvent);
-	}
-	virtual void Init(ImageViewer *viewer, int index)
-	{
-		m_Worker = viewer;
-		m_Index = index;
-		m_hComputeEvent = CreateEventW(nullptr, false/*auto - reset*/, false, nullptr);
-		m_hResumeEvent = CreateEventW(nullptr, false/*auto - reset*/, false, nullptr);
-		m_bExit = false;
-		start();
-	}
-	virtual void run()
-	{
-		m_Semaphore.post();
-		while (!m_bExit)
-		{
-			WaitForSingleObject(m_hResumeEvent, INFINITE);
-			m_Worker->RunThread(m_Index);
-			SetEvent(m_hComputeEvent);
-		}
-	}
-
-	virtual void Close()
-	{
-		Resume();
-		m_bExit = true;
-	}
-
-	virtual void Resume()
-	{
-		SetEvent(m_hResumeEvent);
-	}
-	virtual void WaitSync()
-	{
-		WaitForSingleObject(m_hComputeEvent, INFINITE);
-	}
-private:
-	int m_Index;
-	ImageViewer *m_Worker;
-	bool m_bExit;
-	HANDLE m_hComputeEvent;
-	HANDLE m_hResumeEvent;
-	IlmThread::Semaphore m_Semaphore;
 };

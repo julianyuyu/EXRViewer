@@ -119,22 +119,66 @@ public:
 		m_hWnd = hwnd;
 		m_hMainMenu = ::GetMenu(m_hWnd);
 	}
-	HMENU GetSubItem(int Pos)
+
+	inline HMENU GetSubMenuByName(PWSTR name)
 	{
-		return ::GetSubMenu(m_hMainMenu, Pos);
+		return ::GetSubMenu(m_hMainMenu, GetMainItemPos(name));
 	}
+
 	void CheckItem(HMENU hMenu, DWORD ItemId, bool bCheck);
+
+	int GetItemPos(HMENU hMenu, DWORD ItemId)
+	{
+		int cc = GetMenuItemCount(hMenu);
+		for (int i = 0; i < cc; ++i)
+		{
+			if (GetMenuItemID(hMenu, i) == ItemId)
+				return i;
+		}
+	}
+
+	int GetMainItemPos(PWSTR name)
+	{
+		wchar_t curName[100];
+
+		int cc = GetMenuItemCount(m_hMainMenu);
+		for (int i = 0; i < cc; ++i)
+		{
+			GetMenuStringW(m_hMainMenu, i, curName, 100, MF_BYPOSITION);
+			if (WSTR_MATCH(name, curName))
+			{
+				return i;
+			}
+		}
+		return -1;
+	}
+	
 	void CheckMainItem(DWORD ItemId, bool bCheck)
 	{
 		CheckItem(m_hMainMenu, ItemId, bCheck);
 	}
-	void AppendItem(HMENU hMenu, DWORD ItemId, PWSTR str)
+
+	inline void AppendSeparator(HMENU hMenu)
+	{
+		::AppendMenuW(hMenu, MF_SEPARATOR, 0, 0);
+	}
+
+	inline void AppendItem(HMENU hMenu, DWORD ItemId, PWSTR str)
 	{
 		::AppendMenuW(hMenu, MF_STRING, ItemId, str);
 	}
-	void RemoveItem(HMENU hMenu, DWORD ItemId)
+
+	inline void RemoveItem(HMENU hMenu, DWORD ItemId)
 	{
 		::RemoveMenu(hMenu, ItemId, MF_BYCOMMAND);
+		::DrawMenuBar(m_hWnd);
+	}
+
+	inline void RemoveLastItem(HMENU hMenu)
+	{
+		int cc = GetMenuItemCount(hMenu);
+		::RemoveMenu(hMenu, cc-1, MF_BYPOSITION);
+		::DrawMenuBar(m_hWnd);
 	}
 
 protected:
@@ -142,15 +186,15 @@ protected:
 	HMENU m_hMainMenu;
 };
 
-class StandardScroll
+class StandardScrollBar
 {
 public:
-	StandardScroll() {}
-	StandardScroll(HWND hwnd)
+	StandardScrollBar() {}
+	StandardScrollBar(HWND hwnd)
 	{
 		Init(hwnd);
 	}
-	~StandardScroll()
+	~StandardScrollBar()
 	{
 	}
 	void Init(HWND hwnd)
@@ -169,12 +213,18 @@ public:
 	bool IsHorzScroll() { return m_bShowHorz; }
 	bool Show(int barId, bool bShow)
 	{
-		//m_bShowVert = false;
-		//m_bShowHorz = false;
-		//if (bShow)
+		if (barId == SB_BOTH)
 		{
-			m_bShowVert = bShow && (barId == SB_BOTH || barId == SB_VERT);
-			m_bShowHorz = bShow && (barId == SB_BOTH || barId == SB_HORZ);
+			m_bShowVert = bShow;
+			m_bShowHorz = bShow;
+		}
+		else if (barId == SB_HORZ)
+		{
+			m_bShowHorz = bShow;
+		}
+		else if (barId == SB_VERT)
+		{
+			m_bShowVert = bShow;
 		}
 		return ::ShowScrollBar(m_hWnd, barId, bShow) ? true : false;
 	}

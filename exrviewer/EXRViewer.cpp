@@ -3,10 +3,10 @@
 
 #include "stdafx.h"
 #include "EXRViewer.h"
-#include <commdlg.h>
 #include "resource.h"
 #include "panel.h"
 #include "viewimage.h"
+#include <commdlg.h>
 
 // Include the v6 common controls in the manifest
 #pragma comment(linker, \
@@ -17,14 +17,13 @@
 	"publicKeyToken='6595b64144ccf1df' "\
 	"language='*'\"")
 
-
 #define MAX_LOADSTRING 100
 
 void OnCreate(HWND hWnd);
 void OnDestroy();
 void OnSize(HWND hWnd, int width, int height);
 
-BOOL FetchOpenFileName(HWND hWnd, LPSTR pszOutputName, LPSTR pszTitle = NULL);
+BOOL FetchOpenFileName(HWND hWnd, PWSTR pszOutputName, PWSTR pszTitle = nullptr);
 
 HINSTANCE hInst;
 WCHAR szTitle[MAX_LOADSTRING];
@@ -103,13 +102,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             {
 			case IDM_OPEN:
 			{
-				char filename[256] = {};
+				WCHAR filename[MAX_PATH] = {};
 				FetchOpenFileName(hWnd, filename);
 				g_pViewer->OpenImage(filename);
 			}
 				break;
+			case IDM_CLOSE:
+				g_pViewer->CloseImage();
+				break;
 			case IDM_ACTUALSIZE:
-				g_pMenuMan->CheckMainItem(IDM_ACTUALSIZE, g_pViewer->GetOption(OPT_ACTUALSIZE) ? true : false);
+			{
+				bool bActual = !(g_pViewer->GetOption(OPT_ACTUALSIZE));
+				g_pViewer->SetOption(OPT_ACTUALSIZE, bActual? 1: 0);
+				g_pMenuMan->CheckMainItem(IDM_ACTUALSIZE, bActual);
+			}
 				break;
             case IDM_ABOUT:
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
@@ -177,46 +183,51 @@ void OnCreate(HWND hWnd)
 
 void OnSize(HWND hWnd, int width, int height)
 {
-	//int right_w = g_pPanel->GetWidth();
-	//int left_w = width - right_w;
-	//g_pPanel->Move(left_w, 0, right_w, height, true);
-	//g_pImgWnd->Move(0, 0, left_w, height, true);
+	if (width && height)
+	{
+		//int right_w = g_pPanel->GetWidth();
+		//int left_w = width - right_w;
+		//g_pPanel->Move(left_w, 0, right_w, height, true);
+		//g_pImgWnd->Move(0, 0, left_w, height, true);
 
-	int bottom_h = g_pPanel->GetHeight();
-	int top_h = height - bottom_h;
-	g_pImgWnd->Move(0, 0, width, top_h, true);
-	g_pPanel->Move(0, top_h, width, bottom_h, true);
+		int bottom_h = g_pPanel->GetHeight();
+		int top_h = height - bottom_h;
+		g_pImgWnd->Move(0, 0, width, top_h, true);
+		g_pPanel->Move(0, top_h, width, bottom_h, true);
+
+		g_pViewer->UpdateDisplayRect();
+	}
 }
 
 void OnDestroy()
 {
+	SAFEDELETE(g_pMenuMan);
 	SAFEDELETE(g_pViewer);
 	SAFEDELETE(g_pPanel);
 	SAFEDELETE(g_pImgWnd);
 }
 
-BOOL FetchOpenFileName(HWND hWnd, LPSTR pszOutputName, LPSTR pszTitle /*= NULL*/)
+BOOL FetchOpenFileName(HWND hWnd, PWSTR pszOutputName, PWSTR pszTitle /*= nullptr*/)
 {
-	OPENFILENAMEA ofn;
-	memset(&ofn, 0, sizeof(OPENFILENAMEA));
-	ofn.lStructSize = sizeof(OPENFILENAMEA);
+	OPENFILENAMEW ofn = {};
+	ofn.lStructSize = sizeof(OPENFILENAMEW);
 	ofn.hInstance = hInst;
 	ofn.hwndOwner = hWnd;
 	ofn.nMaxFile = MAX_PATH;
 	ofn.lpstrFile = pszOutputName;
 	ofn.lpstrTitle = pszTitle;
-	ofn.lpstrInitialDir = NULL;
+	ofn.lpstrInitialDir = nullptr;
 	ofn.Flags = OFN_READONLY | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_EXPLORER;
 
-	ofn.lpstrFile[0] = '\0';
+	ofn.lpstrFile[0] = L'\0';
 
 	if (!ofn.lpstrTitle)
 	{
-		ofn.lpstrTitle = "Open an EXR file";
+		ofn.lpstrTitle = L"Open an EXR file";
 	}
-	ofn.lpstrFilter = "EXR Files (*.exr)\0*.exr\0" \
-			"All Files (*.*)\0*.*\0\0";
-	ofn.lpstrDefExt = "exr";
+	ofn.lpstrFilter = L"EXR Files (*.exr)\0*.exr\0" \
+			L"All Files (*.*)\0*.*\0\0";
+	ofn.lpstrDefExt = L"exr";
 
-	return GetOpenFileNameA(&ofn);
+	return GetOpenFileNameW(&ofn);
 }

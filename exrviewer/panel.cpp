@@ -21,7 +21,10 @@ int ImageWnd::OnMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		HDC hdc = BeginPaint(hWnd, &ps);
 		EndPaint(hWnd, &ps);
 		if (m_pViewer)
+		{
+			m_pViewer->UpdateDisplayRect();
 			m_pViewer->DrawImage();
+		}
 	}
 	break;
 	}

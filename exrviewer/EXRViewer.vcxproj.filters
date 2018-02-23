@@ -48,6 +48,9 @@
     <ClInclude Include="panel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="threadrunner.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -73,6 +76,12 @@
     </ClCompile>
     <ClCompile Include="uikit\userctrl.cpp">
       <Filter>uikit</Filter>
+    </ClCompile>
+    <ClCompile Include="viewerui.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="viewerthread.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

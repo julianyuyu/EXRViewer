@@ -1,6 +1,7 @@
 
 #include "stdafx.h"
 #include "viewimage.h"
+#include "threadrunner.h"
 
 #include <halfFunction.h>
 #include <ImfStandardAttributes.h>
@@ -124,7 +125,7 @@ void GetSize(IMF::Header* hdr, int& width, int& height, int& disp_w, int& disp_h
 	disp_h = disp.max.y - disp.min.y + 1;
 }
 
-void LoadExrImage(
+bool LoadExrImage(
 	const char fileName[],
 	const char channel[],
 	const char layer[],
@@ -132,22 +133,43 @@ void LoadExrImage(
 	int lx,
 	int ly,
 	int PartIndex,
-	int &zsize,
 	EXR_IMAGE* image)
 {
-	if (image)
+	if (image && fileName)
 	{
-		loadImage(fileName, channel, layer, preview, lx, ly, PartIndex, zsize, image->hdr, image->pixels, image->dataZ, image->sampleCount, image->deepComp);
-		GetSize(&image->hdr, image->width, image->height, image->disp_w, image->disp_h, image->dx, image->dy, image->ratio);
+		if (_stricmp(fileName, ""))
+		{
+			loadImage(fileName, channel, layer, preview, lx, ly, PartIndex, image->zsize, image->hdr, image->pixels, image->dataZ, image->sampleCount, image->deepComp);
+			GetSize(&image->hdr, image->width, image->height, image->disp_w, image->disp_h, image->dx, image->dy, image->ratio);
+			return true;
+		}
 	}
+	return false;
 }
 
-void ImageViewer::LoadEXR(
-	const char fileName[],
-	bool preview, int lx, int ly)
+int ImageViewer::GetPartNum(const char* filename)
 {
-	const char channel_A[2]= "A";
+	int numparts = 0;
+
+	try
+	{
+		IMF::MultiPartInputFile *infile = new IMF::MultiPartInputFile(filename);
+		numparts = infile->parts();
+		delete infile;
+	}
+	catch (IEX_NAMESPACE::BaseExc &e)
+	{
+		printf("error: %s", e.what());
+		return 0;
+	}
+	return numparts;
+}
+
+bool ImageViewer::LoadEXR(const char* fileName, bool preview, int lx, int ly)
+{
+	const char channel_A[2] = "A";
 	const char channel_Z[2] = "Z";
+
 	const char* channel = nullptr;
 	const char* layer = nullptr;
 	if (m_Option.Channel == ALPHA_CHANNEL)
@@ -155,18 +177,25 @@ void ImageViewer::LoadEXR(
 	else if (m_Option.Channel == DEPTH_CHANNEL)
 		channel = channel_Z;
 
-	int PartIndex = 0;
 	m_img.PartNum = GetPartNum(fileName);
-	LoadExrImage(fileName, channel, layer, preview, lx, ly, PartIndex, m_zsize, &m_img);
-	//GetSize(&(m_img.hdr), m_img.width, m_img.height, m_img.disp_w, m_img.disp_h, m_img.dx, m_img.dy, m_img.ratio);
+	return LoadExrImage(fileName, channel, layer, preview, lx, ly, 0/*load 1st part this time*/, &m_img);
 }
 
-void ImageViewer::OpenImage(const char * filename)
+void ImageViewer::OpenImage(const wchar_t * filename)
 {
-	if (!_stricmp(filename, m_szFileName))
+	if (!_wcsicmp(filename, m_szFileName))
 		return;
 
-	strcpy_s(m_szFileName, MAX_PATH, filename);
+	wcscpy_s(m_szFileName, MAX_PATH, filename);
+
+	char ansiname[MAX_PATH] = {};
+	
+	size_t i;
+	wcstombs_s(&i, ansiname, MAX_PATH, filename, MAX_PATH);
+	if (i != (wcslen(filename) + 1/* null terminated */))
+	{
+		return;
+	}
 
 	if (m_img.pixels)
 	{
@@ -174,13 +203,18 @@ void ImageViewer::OpenImage(const char * filename)
 		CloseImage();
 	}
 
-	LoadEXR(filename, false, -1, -1);
-	AppendEXRPartIndexMenu();
-	m_img.rgb = new BYTE[m_img.width * m_img.height * 3];
+	if (LoadEXR(ansiname, false, -1, -1))
+	{
+		m_bImageLoaded = true;
+		SAFEDELETE(m_img.rgb);
+		m_img.rgb = new BYTE[m_img.width * m_img.height * 3];
 
-	UpdateImage();
-	//UpdateWnd();
-	DrawImage();
+		AppendEXRPartIndexMenu();
+
+		UpdateImage();
+		UpdateDisplayRect();
+		DrawImage();
+	}
 }
 
 void ImageViewer::UpdateImage()
@@ -190,211 +224,6 @@ void ImageViewer::UpdateImage()
 	ComputeFogColor(m_img.pixels, m_img.width, m_img.height);
 	ResumeAllThreads();
 	WaitAllThreads();
-}
-
-void ImageViewer::UpdateWnd()
-{
-	if (!m_Option.bActualImageSize)
-	{
-		m_Scroll.Show(SB_BOTH, false);
-	}
-	else
-	{
-		bool bHorz= false, bVert = false;
-		RECT rc;
-		::GetClientRect(m_hWnd, &rc);
-		int ww = rc.right - rc.left;
-		int wh = rc.bottom - rc.top;
-		if (m_img.width > m_WndWidth)
-		{
-			bHorz = true;
-		}
-
-		if (m_img.height > m_WndHeight)
-		{
-			bVert = true;
-		}
-
-		m_Scroll.Show(SB_HORZ, bHorz);
-		m_Scroll.Show(SB_VERT, bVert);
-
-		::GetClientRect(m_hWnd, &rc);
-		if (bHorz)
-		{
-			m_Scroll.SetPage(SB_HORZ, rc.right - rc.left);
-			m_Scroll.SetRange(SB_HORZ, 0, m_img.width);
-		}
-
-		if (bVert)
-		{
-			m_Scroll.SetPage(SB_VERT, rc.bottom - rc.top);
-			m_Scroll.SetRange(SB_VERT, 0, m_img.height);
-		}
-	}
-}
-
-bool ImageViewer::UpdateDisplayRect()
-{
-	UpdateWnd();
-	bool updated = false;
-	RECT rc;
-	::GetClientRect(m_hWnd, &rc);
-	int ww = rc.right - rc.left;
-	int wh = rc.bottom - rc.top;
-
-	if (ww != m_WndWidth)
-	{
-		m_WndWidth = ww;
-		updated = true;
-	}
-	if (wh != m_WndHeight)
-	{
-		m_WndHeight = wh;
-		updated = true;
-	}
-	if (updated)
-	{
-		if (!m_Option.bActualImageSize)
-		{
-			float r_wnd = (float)m_WndWidth / (float)m_WndHeight;
-			float r_img = (float)m_img.width / (float)m_img.height;
-			if (r_wnd >= r_img)
-			{
-				m_StretchRect.h = m_WndHeight;
-				m_StretchRect.w = (int)((float)m_WndHeight * r_img);
-				m_StretchRect.x = (m_WndWidth - m_StretchRect.w) / 2;
-				m_StretchRect.y = 0;
-			}
-			else
-			{
-				m_StretchRect.h = (int)((float)m_WndWidth / r_img);
-				m_StretchRect.w = m_WndWidth;
-				m_StretchRect.x = 0;
-				m_StretchRect.y = (m_WndHeight - m_StretchRect.h) / 2;
-			}
-		}
-		else
-		{
-			// scroll display
-			m_ScrollRect.x = 0;
-			m_ScrollRect.y = 0;
-			m_ScrollRect.w = m_WndWidth;
-			m_ScrollRect.h = m_WndHeight;
-
-			if (!m_Scroll.IsHorzScroll())
-			{
-				m_ScrollRect.x = (m_WndWidth - m_img.width) / 2;
-				m_ScrollRect.w = m_img.width;
-			}
-			if (!m_Scroll.IsVertScroll())
-			{
-				m_ScrollRect.y = (m_WndHeight - m_img.height) / 2;
-				m_ScrollRect.h = m_img.height;
-			}
-			m_ScrollPosX = 0;
-			m_ScrollPosY = 0;
-		}
-	}
-	return updated;
-}
-
-void ImageViewer::MouseScroll(bool bLButton, int xpos, int ypos)
-{
-	static bool bMouseMoving = false;
-	if (!bLButton)
-	{
-		if (bMouseMoving)
-		{
-			bMouseMoving = false;
-			SetHandCursor(false);
-		}
-	}
-	else
-	{
-		static int xpos_last = 0;
-		static int ypos_last = 0;
-		if (!bMouseMoving)
-		{
-			bMouseMoving = true;
-			SetHandCursor(true);
-			xpos_last = xpos;
-			ypos_last = ypos;
-		}
-		else /*if (bMouseMoving)*/
-		{
-			int delta_x = xpos_last - xpos;
-			int delta_y = ypos_last - ypos;
-			xpos_last = xpos;
-			ypos_last = ypos;
-
-			if (m_Scroll.IsHorzScroll())
-			{
-				m_ScrollPosX = m_Scroll.ClampXPosToRange(m_ScrollPosX + delta_x);
-				m_Scroll.SetPos(SB_HORZ, m_ScrollPosX);
-			}
-			if (m_Scroll.IsVertScroll())
-			{
-				m_ScrollPosY = m_Scroll.ClampYPosToRange(m_ScrollPosY + delta_y);
-				m_Scroll.SetPos(SB_VERT, m_ScrollPosY);
-			}
-			DrawImage();
-		}
-	}
-}
-
-void ImageViewer::Scroll(bool bHorz, int request, int pos)
-{
-	if (request == SB_THUMBTRACK || request == SB_THUMBPOSITION)
-	{
-		if (bHorz)
-			m_ScrollPosX = pos;
-		else
-			m_ScrollPosY = pos;
-		SetScrollPos(m_hWnd, bHorz ? SB_HORZ : SB_VERT, pos, TRUE);
-	}
-	else if (request == SB_PAGELEFT || request == SB_PAGERIGHT)
-	{
-		int sign = (request == SB_PAGELEFT) ? -1 : 1;
-		int v = 0; // old pos
-		if (bHorz)
-		{
-			v = m_Scroll.GetPos(SB_HORZ) + sign * m_Scroll.PageX();
-			//v = IntClamp(v, m_Scroll.MinX(), m_Scroll.MaxX()- m_Scroll.PageX());
-			v = m_Scroll.ClampXPosToRange(v);
-			m_ScrollPosX = v;
-		}
-		else
-		{
-			v = m_Scroll.GetPos(SB_VERT) + sign * m_Scroll.PageY();
-			//v = IntClamp(v, m_Scroll.MinY(), m_Scroll.MaxY() - m_Scroll.PageY());
-			v = m_Scroll.ClampYPosToRange(v);
-			m_ScrollPosY = v;
-		}
-		m_Scroll.SetPos(bHorz ? SB_HORZ : SB_VERT, v);
-	}
-	else if (request == SB_LINELEFT || request == SB_LINERIGHT)
-	{
-		const int scroll_step = 10;
-		int sign = (request == SB_LINELEFT) ? -1 : 1;
-		int v = 0; // new pos
-		if (bHorz)
-		{
-			v = m_Scroll.GetPos(SB_HORZ) + sign * scroll_step;
-			v = IntClamp(v, m_Scroll.MinX(), m_Scroll.MaxX() - m_Scroll.PageX());
-			v = m_Scroll.ClampXPosToRange(v);
-			m_ScrollPosX = v;
-		}
-		else
-		{
-			v = m_Scroll.GetPos(SB_VERT) + sign * scroll_step;
-			//v = IntClamp(v, m_Scroll.MinY(), m_Scroll.MaxY() - m_Scroll.PageY());
-			v = m_Scroll.ClampYPosToRange(v);
-			m_ScrollPosY = v;
-		}
-		m_Scroll.SetPos(bHorz ? SB_HORZ : SB_VERT, v);
-	}
-
-	DrawImage();
 }
 
 void ImageViewer::DrawImage()
@@ -417,7 +246,7 @@ void ImageViewer::DrawImage()
 
 	SetDIBits(hMemDC, hBmp, 0, abs(bmpInfo.bmiHeader.biHeight), (BYTE *)m_img.rgb, &bmpInfo, DIB_RGB_COLORS);
 
-	UpdateDisplayRect();
+	//UpdateDisplayRect();
 	if (!m_Option.bActualImageSize)
 	{
 		SetStretchBltMode(hdc, COLORONCOLOR);
@@ -443,128 +272,6 @@ void ImageViewer::ClearImage()
 	ReleaseDC(m_hWnd, hdc);
 }
 
-void ImageViewer::RunThread(int index)
-{
-	if (!m_img.rgb)
-		return;
-
-	halfFunction<float> rGamma(Gamma(m_gamma, m_exposure, m_defog * m_fogR, m_kneeLow, m_kneeHigh),
-		-HALF_MAX, HALF_MAX, 0.f, 255.f, 0.f, 0.f);
-
-	halfFunction<float> gGamma(Gamma(m_gamma, m_exposure, m_defog * m_fogG, m_kneeLow, m_kneeHigh),
-		-HALF_MAX, HALF_MAX, 0.f, 255.f, 0.f, 0.f);
-
-	halfFunction<float> bGamma(Gamma(m_gamma, m_exposure, m_defog * m_fogB, m_kneeLow, m_kneeHigh),
-		-HALF_MAX, HALF_MAX, 0.f, 255.f, 0.f, 0.f);
-
-	int ww = m_img.width;
-	int hh = m_img.height / THREAD_NUM;
-	int x_start = 0;
-	int y_start = index * hh;
-	int x_end = x_start + ww;
-	int y_end = y_start + hh;
-	Imf::Rgba *pixel0 = &(m_img.pixels[0]);
-	Imf::Rgba *pixel;
-	BYTE *color0 = (BYTE*)m_img.rgb;
-	BYTE *color;
-
-	pixel0 += m_img.width * y_start;
-	color0 += m_img.width * y_start * 3;
-	for (int y = y_start; y < y_end && y < m_img.height; y++)
-	{
-		pixel = pixel0 + x_start;
-		color = color0 + x_start * 3;
-		for (int x = x_start; x < x_end; x++)
-		{
-			*color++ = (unsigned char)(dither(bGamma(pixel->b), x, y) /** 255.f*/);
-			*color++ = (unsigned char)(dither(gGamma(pixel->g), x, y) /** 255.f*/);
-			*color++ = (unsigned char)(dither(rGamma(pixel->r), x, y) /** 255.f*/);
-			pixel++;
-		}
-		pixel0 += m_img.width;
-		color0 += m_img.width * 3;
-	}
-}
-
-int ImageViewer::GetPartNum(const char* filename)
-{
-	int numparts = 0;
-
-	try
-	{
-		IMF::MultiPartInputFile *infile = new IMF::MultiPartInputFile(filename);
-		numparts = infile->parts();
-		delete infile;
-	}
-	catch (IEX_NAMESPACE::BaseExc &e)
-	{
-		printf("error: %s", e.what());
-		return 0;
-	}
-	return numparts;
-}
-
-void ImageViewer::RemoveEXRPartIndexMenu()
-{
-	const int IDM_PARTIDX_0 = 64000;
-	const int IMG_MENU_POS = 2;
-	if (m_img.PartNum >= 1)
-	{
-		HMENU hImgMenu = m_pMenuMan->GetSubItem(IMG_MENU_POS);
-		for (int i = 0; i < m_img.PartNum; ++i)
-		{
-			m_pMenuMan->RemoveItem(hImgMenu, IDM_PARTIDX_0 + i);
-		}
-	}
-}
-void ImageViewer::AppendEXRPartIndexMenu()
-{
-	const int IDM_PARTIDX_0 = 64000;
-	const int IMG_MENU_POS = 2;
-	if (m_img.PartNum >= 1)
-	{
-		HMENU hImgMenu = m_pMenuMan->GetSubItem(IMG_MENU_POS);
-		WCHAR ch[20] = {};
-		for (int i = 0; i < m_img.PartNum; ++i)
-		{
-			swprintf_s(ch, 20, L"Part Index %d", i);
-			m_pMenuMan->AppendItem(hImgMenu, IDM_PARTIDX_0+i, ch);
-		}
-	}
-}
-
-void ImageViewer::CreateThreads()
-{
-	for (int i = 0; i < THREAD_NUM; i++)
-	{
-		m_Threads[i] = new ThreadRunner(this, i);
-	}
-}
-
-void ImageViewer::DestroyThreads()
-{
-	for (int i = 0; i < THREAD_NUM; i++)
-	{
-		SAFEDELETE(m_Threads[i]);
-	}
-}
-
-void ImageViewer::ResumeAllThreads()
-{
-	for (int i = 0; i < THREAD_NUM; i++)
-	{
-		m_Threads[i]->Resume();
-	}
-}
-
-void ImageViewer::WaitAllThreads()
-{
-	for (int i = 0; i < THREAD_NUM; i++)
-	{
-		m_Threads[i]->WaitSync();
-	}
-}
-
 void ImageViewer::InitOption()
 {
 	ZeroMemory(&m_Option, sizeof(VIEWER_OPTION));
@@ -577,9 +284,9 @@ int ImageViewer::SetOption(VIEWER_OPTION_TYPE type, int value/*=0*/)
 	switch (type)
 	{
 	case OPT_ACTUALSIZE:
-		m_Option.bActualImageSize = !m_Option.bActualImageSize;
+		m_Option.bActualImageSize = (bool)value;
+		UpdateDisplayRect();
 		DrawImage();
-		return m_Option.bActualImageSize ? 1 : 0;
 		break;
 	default:
 		break;

@@ -3,26 +3,6 @@
 #include "userctrl.h"
 #include "userwnd.h"
 
-void SetMenuItemState(HMENU hMenu, DWORD ItemId, bool bCheck)
-{
-	if (hMenu)
-	{
-		if (bCheck)
-		{
-			CheckMenuItem(hMenu, ItemId, MF_BYCOMMAND | MF_CHECKED);
-		}
-		else
-		{
-			CheckMenuItem(hMenu, ItemId, MF_BYCOMMAND | MF_UNCHECKED);
-		}
-	}
-}
-
-void SetMainMenuItemState(HWND hWnd, DWORD ItemId, bool bCheck)
-{
-	SetMenuItemState(GetMenu(hWnd), ItemId, bCheck);
-}
-
 void MenuMan::CheckItem(HMENU hMenu, DWORD ItemId, bool bCheck)
 {
 	if (hMenu)

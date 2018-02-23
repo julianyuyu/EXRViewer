@@ -168,6 +168,7 @@
     <ClInclude Include="res\targetver.h" />
     <ClInclude Include="scaleImage.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="threadrunner.h" />
     <ClInclude Include="uikit\userctrl.h" />
     <ClInclude Include="uikit\userwnd.h" />
     <ClInclude Include="EXRViewer.h" />
@@ -186,6 +187,8 @@
     <ClCompile Include="uikit\userctrl.cpp" />
     <ClCompile Include="uikit\userwnd.cpp" />
     <ClCompile Include="EXRViewer.cpp" />
+    <ClCompile Include="viewerthread.cpp" />
+    <ClCompile Include="viewerui.cpp" />
     <ClCompile Include="viewimage.cpp" />
   </ItemGroup>
   <ItemGroup>
