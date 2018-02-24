@@ -5,6 +5,12 @@
 #include "panel.h"
 
 
+inline bool PtInRect(int x, int y, DispRect rect)
+{
+	return (x >= rect.x && x <= rect.x + rect.w &&
+		y >= rect.y && y <= rect.y + rect.h);
+}
+
 void ImageViewer::UpdateScrollWnd()
 {
 	if (!m_Option.bActualImageSize)
@@ -123,9 +129,15 @@ void ImageViewer::MouseScroll(bool bLButton, int xpos, int ypos)
 		if (bMouseDragging)
 		{
 			bMouseDragging = false;
-			ChangeCursor(CUR_CROSS);
 		}
-		ShowPixelInfo(xpos, ypos);
+		if (( m_Option.bActualImageSize && PtInRect(xpos, ypos, m_ScrollRect))||
+			(!m_Option.bActualImageSize && PtInRect(xpos, ypos, m_StretchRect)))
+		{
+			ChangeCursor(CUR_CROSS);
+			ShowPixelInfo(xpos, ypos);
+		}
+		else
+			ChangeCursor(CUR_ARROW);
 	}
 	else
 	{
@@ -198,7 +210,7 @@ void ImageViewer::Scroll(bool bHorz, int request, int pos)
 		if (bHorz)
 		{
 			v = m_Scroll.GetPos(SB_HORZ) + sign * scroll_step;
-			v = IntClamp(v, m_Scroll.MinX(), m_Scroll.MaxX() - m_Scroll.PageX());
+			//v = IntClamp(v, m_Scroll.MinX(), m_Scroll.MaxX() - m_Scroll.PageX());
 			v = m_Scroll.ClampXPosToRange(v);
 			m_ScrollPosX = v;
 		}
@@ -241,11 +253,6 @@ void ImageViewer::ShowPixelInfo(int xpos, int ypos)
 		int g = (int)(*rgb++);
 		int r = (int)(*rgb++);
 
-		//HDC hdc = GetDC(m_hWnd);
-		//wchar_t str[100] = {};
-		//swprintf_s(str, 99, L"x: %d, y: %d, rgb: %d,%d,%d", x, y, r, g, b);
-		//TextOutW(hdc, 10, 10, str, wcslen(str));
-		//ReleaseDC(m_hWnd, hdc);
 		if (m_pCtlPanel)
 			m_pCtlPanel->SetCoordAndColorInfo(x, y, r, g, b);
 	}

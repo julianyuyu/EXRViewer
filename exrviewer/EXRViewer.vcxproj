@@ -172,6 +172,7 @@
     <ClInclude Include="uikit\userctrl.h" />
     <ClInclude Include="uikit\userwnd.h" />
     <ClInclude Include="EXRViewer.h" />
+    <ClInclude Include="viewergamma.h" />
     <ClInclude Include="viewimage.h" />
   </ItemGroup>
   <ItemGroup>

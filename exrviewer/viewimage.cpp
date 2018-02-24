@@ -4,39 +4,9 @@
 #include "panel.h"
 #include "threadrunner.h"
 
-#include <halfFunction.h>
+//#include <halfFunction.h>
 #include <ImfStandardAttributes.h>
 #include <ImfMultiPartInputFile.h>
-
-float Knee(double x, double f)
-{
-	return float(IMATH::Math<double>::log(x * f + 1) / f);
-}
-
-float FindKneeF(float x, float y)
-{
-	float f0 = 0;
-	float f1 = 1;
-
-	while (Knee(x, f1) > y)
-	{
-		f0 = f1;
-		f1 = f1 * 2;
-	}
-
-	for (int i = 0; i < 30; ++i)
-	{
-		float f2 = (f0 + f1) / 2;
-		float y2 = Knee(x, f2);
-
-		if (y2 < y)
-			f1 = f2;
-		else
-			f0 = f2;
-	}
-
-	return (f0 + f1) / 2;
-}
 
 IMF::Chromaticities DisplayChromaticities()
 {

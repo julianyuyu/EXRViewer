@@ -2,22 +2,16 @@
 #include "stdafx.h"
 #include "viewimage.h"
 #include "threadrunner.h"
-
-#include <halfFunction.h>
+#include "viewergamma.h"
 
 void ImageViewer::RunThread(int index)
 {
 	if (!m_img.rgb)
 		return;
 
-	halfFunction<float> rGamma(Gamma(m_gamma, m_exposure, m_defog * m_fogR, m_kneeLow, m_kneeHigh),
-		-HALF_MAX, HALF_MAX, 0.f, 255.f, 0.f, 0.f);
-
-	halfFunction<float> gGamma(Gamma(m_gamma, m_exposure, m_defog * m_fogG, m_kneeLow, m_kneeHigh),
-		-HALF_MAX, HALF_MAX, 0.f, 255.f, 0.f, 0.f);
-
-	halfFunction<float> bGamma(Gamma(m_gamma, m_exposure, m_defog * m_fogB, m_kneeLow, m_kneeHigh),
-		-HALF_MAX, HALF_MAX, 0.f, 255.f, 0.f, 0.f);
+	GammaLutCalculator rg(m_gamma, m_exposure, m_defog * m_fogR, m_kneeLow, m_kneeHigh, m_GammaLut[index][0]);
+	GammaLutCalculator gg(m_gamma, m_exposure, m_defog * m_fogG, m_kneeLow, m_kneeHigh, m_GammaLut[index][1]);
+	GammaLutCalculator bg(m_gamma, m_exposure, m_defog * m_fogB, m_kneeLow, m_kneeHigh, m_GammaLut[index][2]);
 
 	int ww = m_img.width;
 	int hh = m_img.height / THREAD_NUM;
@@ -38,9 +32,9 @@ void ImageViewer::RunThread(int index)
 		color = color0 + x_start * 3;
 		for (int x = x_start; x < x_end; x++)
 		{
-			*color++ = (unsigned char)(dither(bGamma(pixel->b), x, y) /** 255.f*/);
-			*color++ = (unsigned char)(dither(gGamma(pixel->g), x, y) /** 255.f*/);
-			*color++ = (unsigned char)(dither(rGamma(pixel->r), x, y) /** 255.f*/);
+			*color++ = (unsigned char)(dither(bg.calc(pixel->b), x, y) /** 255.f*/);
+			*color++ = (unsigned char)(dither(gg.calc(pixel->g), x, y) /** 255.f*/);
+			*color++ = (unsigned char)(dither(rg.calc(pixel->r), x, y) /** 255.f*/);
 			pixel++;
 		}
 		pixel0 += m_img.width;

@@ -5,16 +5,11 @@
 #include <ImfHeader.h>
 #include <ImathFun.h>
 #include <ImathLimits.h>
+#include "namespaceAlias.h"
 
 #include "loadImage.h"
 #include "scaleImage.h"
-#include "namespaceAlias.h"
 #include "userctrl.h"
-
-#define max(a,b)            (((a) > (b)) ? (a) : (b))
-
-float Knee(double x, double f);
-float FindKneeF(float x, float y);
 
 struct DispRect
 {
@@ -81,44 +76,6 @@ struct EXR_IMAGE
 	int Mirror()
 	{
 		swapPixels(width, height, pixels);
-	}
-};
-
-struct Gamma
-{
-	float g, m, d, kl, f, s;
-
-	Gamma(float gamma,
-		float exposure,
-		float defog,
-		float kneeLow,
-		float kneeHigh)	:
-		g(gamma),
-		m(IMATH::Math<float>::pow(2, exposure + 2.47393)),
-		d(defog),
-		kl(IMATH::Math<float>::pow(2, kneeLow)),
-		f(FindKneeF(IMATH::Math<float>::pow(2, kneeHigh) - kl,
-			IMATH::Math<float>::pow(2, 3.5) - kl)),
-		s(255.0 * IMATH::Math<float>::pow(2, -3.5 * g))
-	{}
-
-	float operator () (half h)
-	{
-		// Defog
-		float x = max(0.f, (h - d));
-
-		// Exposure
-		x *= m;
-
-		// Knee
-		if (x > kl)
-			x = kl + Knee(x - kl, f);
-
-		// Gamma
-		x = IMATH::Math<float>::pow(x, g);
-
-		// Scale and clamp
-		return IMATH_NAMESPACE::clamp(x * s, 0.f, 255.f);
 	}
 };
 
@@ -247,6 +204,7 @@ protected:
 	}
 	virtual void UpdateScrollWnd();
 
+	float m_GammaLut[THREAD_NUM][3/*rgb channel*/][1 << 16];
 	ThreadRunner *m_Threads[THREAD_NUM];
 	wchar_t m_szFileName[MAX_PATH];
 	bool m_bImageLoaded;

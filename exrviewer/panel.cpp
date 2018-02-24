@@ -31,12 +31,6 @@ int ImageWnd::OnMessage(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-#if 0
-void CalcCtrlsSize(HWND hParent, int x, int y, int& w, int& h,
-	int& x1, int& x2, int& x3, int& x4, 
-	int& y1, int& y2, int& y3, int& y4,
-	int& w1, int& w2, int& w3, int& w4)
-#endif
 void CtlPanel::CalcCtrlsSize(int x, int y, int& w, int& h,
 		DispRect& r1, DispRect& r2, DispRect& r3, DispRect& r4,/* 4 sliders*/
 		DispRect& r5, DispRect& r6 /*2 editboxs*/)
@@ -46,7 +40,7 @@ void CtlPanel::CalcCtrlsSize(int x, int y, int& w, int& h,
 	int sep_x = offset * 8;
 	int x1 = offset;
 	int y1 = offset;
-	int x2, x3, x4, y2, y3, y4, w1, w2, w3, w4;
+	int x2, x3, x4, y2, y3, y4, w1, w2, w3, w4; /* size for 4 sliders */
 
 	RECT rc;
 	GetClientRect(m_hParent, &rc);
@@ -58,7 +52,7 @@ void CtlPanel::CalcCtrlsSize(int x, int y, int& w, int& h,
 
 	const int w_edt = EDITBOX_WIDTH;
 	const int h_edt = EDITBOX_HEIGHT;
-	int w_sld_all=w-w_edt-offset;
+	int w_sld_all= w- w_edt - offset;
 	r5.w = w_edt, r6.w = w_edt;
 	r5.h = h_edt, r6.h = h_edt;
 	r5.x = x1;
@@ -106,60 +100,46 @@ void CtlPanel::CalcCtrlsSize(int x, int y, int& w, int& h,
 
 void CtlPanel::CreateCtrls(int x, int y, int w, int h, HWND hParent, HINSTANCE hInst)
 {
+	const int LABEL_WIDTH = 50;
 	int ww = w, hh = 0;
 	int xx = x, yy = y;
-	//int  x1, x2, x3, x4;
-	//int  y1, y2, y3, y4;
-	//int  w1, w2, w3, w4;
-	//CalcCtrlsSize(m_hParent, xx, yy, ww, hh, x1, x2, x3, x4, y1, y2, y3, y4, w1, w2, w3, w4);
 	DispRect r1, r2, r3, r4, r5, r6;
 	CalcCtrlsSize(xx, yy, ww, hh, r1, r2, r3, r4, r5, r6);
-	int x1 = r1.x, x2 = r2.x, x3 = r3.x, x4 = r4.x;
-	int y1 = r1.y, y2 = r2.y, y3 = r3.y, y4 = r4.y;
-	int w1 = r1.w, w2 = r2.w, w3 = r3.w, w4 = r4.w;
-
 
 	m_pCtlWnd->Move(xx, yy, ww, hh, true);
 
-	m_pSldExposure = new SliderSet(x1, y1, w1, L"Exposure", 50, m_hCtlWnd, hInst);
+	m_pSldExposure = new SliderSet(r1.x, r1.y, r1.w, L"Exposure", LABEL_WIDTH, m_hCtlWnd, hInst);
 	m_pSldExposure->InitValue(-10, 10, 0.1, 0);
 	m_pSldExposure->SetCallback(OnSliding, (ULONG_PTR)this);
 
-	m_pSldDefog = new SliderSet(x2, y2, w2, L"Defog", 50, m_hCtlWnd, hInst);
+	m_pSldDefog = new SliderSet(r2.x, r2.y, r2.w, L"Defog", LABEL_WIDTH, m_hCtlWnd, hInst);
 	m_pSldDefog->InitValue(0, 0.01, 0.0001, 0);
 	m_pSldDefog->SetCallback(OnSliding, (ULONG_PTR)this);
 
-	m_pSldKneeLow = new SliderSet(x3, y3, w3, L"Knee Low", 50, m_hCtlWnd, hInst);
+	m_pSldKneeLow = new SliderSet(r3.x, r3.y, r3.w, L"Knee Low", LABEL_WIDTH, m_hCtlWnd, hInst);
 	m_pSldKneeLow->InitValue(-3, 3, 0.1, 0);
 	m_pSldKneeLow->SetCallback(OnSliding, (ULONG_PTR)this);
 
-	m_pSldKneeHigh = new SliderSet(x4, y4, w4, L"Knee High", 50, m_hCtlWnd, hInst);
+	m_pSldKneeHigh = new SliderSet(r4.x, r4.y, r4.w, L"Knee High", LABEL_WIDTH, m_hCtlWnd, hInst);
 	m_pSldKneeHigh->InitValue(3.5, 7.5, 0.1, 5);
 	m_pSldKneeHigh->SetCallback(OnSliding, (ULONG_PTR)this);
 
-	m_pEdtCoord = new Editbox(r5.x, r5.y, r5.w, r5.h, true, L"X:   , Y:", m_hCtlWnd);
-	m_pEdtColor = new Editbox(r6.x, r6.y, r6.w, r6.h, true, L"RGB:", m_hCtlWnd);
+	m_pEdtCoord = new Editbox(r5.x, r5.y, r5.w, r5.h, true, L"X:0, Y:0", m_hCtlWnd);
+	m_pEdtColor = new Editbox(r6.x, r6.y, r6.w, r6.h, true, L"RGB:0,0,0", m_hCtlWnd);
 }
 
 void CtlPanel::Move(int x, int y, int w, int h, bool repaint/* = false*/)
 {
 	int ww = w, hh = 0;
 	int xx = x, yy = y;
-	//int  x1, x2, x3, x4;
-	//int  y1, y2, y3, y4;
-	//int  w1, w2, w3, w4;
-	//CalcCtrlsSize(m_hParent, xx, yy, ww, hh, x1, x2, x3, x4, y1, y2, y3, y4, w1, w2, w3, w4);
 
 	DispRect r1, r2, r3, r4, r5, r6;
 	CalcCtrlsSize(xx, yy, ww, hh, r1, r2, r3, r4, r5, r6);
-	int x1 = r1.x, x2 = r2.x, x3 = r3.x, x4 = r4.x;
-	int y1 = r1.y, y2 = r2.y, y3 = r3.y, y4 = r4.y;
-	int w1 = r1.w, w2 = r2.w, w3 = r3.w, w4 = r4.w;
 
-	m_pSldExposure->Move(x1, y1, w1);
-	m_pSldDefog->Move(x2, y2, w2);
-	m_pSldKneeLow->Move(x3, y3, w3);
-	m_pSldKneeHigh->Move(x4, y4, w4);
+	m_pSldExposure->Move(r1.x, r1.y, r1.w);
+	m_pSldDefog->Move(r2.x, r2.y, r2.w);
+	m_pSldKneeLow->Move(r3.x, r3.y, r3.w);
+	m_pSldKneeHigh->Move(r4.x, r4.y, r4.w);
 	m_pEdtCoord->Move(r5.x, r5.y, r5.w, r5.h);
 	m_pEdtColor->Move(r6.x, r6.y, r6.w, r6.h);
 	
