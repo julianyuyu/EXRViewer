@@ -123,6 +123,7 @@ struct Gamma
 };
 
 class ThreadRunner;
+class CtlPanel;
 
 class ImageViewer
 {
@@ -155,6 +156,7 @@ public:
 		DeleteObject(m_Brush);
 		DestroyThreads();
 	}
+	virtual void SetPanel(CtlPanel* panel) { m_pCtlPanel = panel; }
 
 	virtual void InitOption();
 
@@ -187,17 +189,7 @@ public:
 	virtual void UpdateImage();
 	virtual void DrawImage();
 	virtual void ClearImage();
-	virtual void CloseImage()
-	{
-		m_bImageLoaded = false;
-
-		RemoveEXRPartIndexMenu();
-
-		m_szFileName[0] = L'\0';
-		SAFEDELETE(m_img.rgb);
-		m_Scroll.Show(SB_BOTH, false);
-	}
-
+	virtual void CloseImage();
 	virtual void CreateThreads();
 	virtual void DestroyThreads();
 	virtual void ResumeAllThreads();
@@ -263,6 +255,7 @@ protected:
 	int m_WndWidth;
 	int m_WndHeight;
 	MenuMan* m_pMenuMan;
+	CtlPanel *m_pCtlPanel;
 
 	DispRect m_StretchRect;
 	DispRect m_ScrollRect;

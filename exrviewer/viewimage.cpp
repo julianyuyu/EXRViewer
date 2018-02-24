@@ -1,6 +1,7 @@
 
 #include "stdafx.h"
 #include "viewimage.h"
+#include "panel.h"
 #include "threadrunner.h"
 
 #include <halfFunction.h>
@@ -270,6 +271,20 @@ void ImageViewer::ClearImage()
 	GetClientRect(m_hWnd, &rc);
 	FillRect(hdc, &rc, m_Brush);
 	ReleaseDC(m_hWnd, hdc);
+}
+
+void ImageViewer::CloseImage()
+{
+	m_bImageLoaded = false;
+
+	RemoveEXRPartIndexMenu();
+
+	if (m_pCtlPanel)
+		m_pCtlPanel->SetCoordAndColorInfo(0,0,0,0,0);
+
+	m_szFileName[0] = L'\0';
+	SAFEDELETE(m_img.rgb);
+	m_Scroll.Show(SB_BOTH, false);
 }
 
 void ImageViewer::InitOption()

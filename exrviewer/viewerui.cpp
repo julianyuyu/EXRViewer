@@ -2,6 +2,7 @@
 
 #include "stdafx.h"
 #include "viewimage.h"
+#include "panel.h"
 
 
 void ImageViewer::UpdateScrollWnd()
@@ -216,6 +217,38 @@ void ImageViewer::Scroll(bool bHorz, int request, int pos)
 
 void ImageViewer::ShowPixelInfo(int xpos, int ypos)
 {
+	if (m_bImageLoaded)
+	{
+		int x, y;
+		if (m_Option.bActualImageSize)
+		{
+			x = xpos + m_ScrollPosX - m_ScrollRect.x;
+			y = ypos + m_ScrollPosY - m_ScrollRect.y;
+			x = IntClamp(x, 0, m_img.width);
+			y = IntClamp(y, 0, m_img.height);
+		}
+		else
+		{
+			int _x = xpos - m_StretchRect.x;
+			int _y = ypos - m_StretchRect.y;
+			_x = IntClamp(_x, 0, m_StretchRect.w);
+			_y = IntClamp(_y, 0, m_StretchRect.h);
+			x = _x * m_img.width / m_StretchRect.w;
+			y = _y * m_img.height / m_StretchRect.h;
+		}
+		BYTE* rgb = (BYTE *)m_img.rgb + (y * m_img.width + x) * 3;
+		int b = (int)(*rgb++);
+		int g = (int)(*rgb++);
+		int r = (int)(*rgb++);
+
+		//HDC hdc = GetDC(m_hWnd);
+		//wchar_t str[100] = {};
+		//swprintf_s(str, 99, L"x: %d, y: %d, rgb: %d,%d,%d", x, y, r, g, b);
+		//TextOutW(hdc, 10, 10, str, wcslen(str));
+		//ReleaseDC(m_hWnd, hdc);
+		if (m_pCtlPanel)
+			m_pCtlPanel->SetCoordAndColorInfo(x, y, r, g, b);
+	}
 }
 
 void ImageViewer::RemoveEXRPartIndexMenu()

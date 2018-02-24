@@ -67,6 +67,8 @@ private:
 class CtlPanel
 {
 #define TWOLINE_WIDTH_THRESHOLD		500
+#define EDITBOX_WIDTH	100
+#define EDITBOX_HEIGHT	20
 public:
 	CtlPanel(int x, int y, int w, int h, HWND hParent = nullptr, HINSTANCE hInst = nullptr) :
 		m_pCtlWnd(nullptr), m_pViewer(nullptr),
@@ -93,6 +95,8 @@ public:
 	virtual ~CtlPanel()
 	{
 		//SAFEDELETE(m_pSldGamma);
+		SAFEDELETE(m_pEdtCoord);
+		SAFEDELETE(m_pEdtColor);
 		SAFEDELETE(m_pSldExposure);
 		SAFEDELETE(m_pSldDefog);
 		SAFEDELETE(m_pSldKneeLow);
@@ -111,6 +115,14 @@ public:
 		m_pCtlWnd->GetSize(x, y);
 		return x;
 	}
+	virtual void SetCoordAndColorInfo(int x, int y, int r, int g, int b)
+	{
+		wchar_t str[40] = {};
+		swprintf_s(str, 40, L"X: %d, Y: %d", x, y);
+		m_pEdtCoord->SetText(str);
+		swprintf_s(str, 40, L"RGB: %d,%d,%d", r,g,b);
+		m_pEdtColor->SetText(str);
+	}
 	virtual void Move(int x, int y, int w, int h, bool repaint = false);
 private:
 	static void OnSliding(HWND hSlider, ULONG_PTR arg)
@@ -121,6 +133,9 @@ private:
 public:
 	virtual void Sliding(HWND hSlider);
 private:
+	virtual void CalcCtrlsSize(int x, int y, int& w, int& h,
+		DispRect& r1, DispRect& r2, DispRect& r3, DispRect& r4,
+		DispRect& r5, DispRect& r6);
 	virtual void CreateCtrls(int x, int y, int w, int h, HWND hParent, HINSTANCE hInst);
 	BasicWnd *m_pCtlWnd;
 	HWND m_hCtlWnd;
@@ -130,6 +145,9 @@ private:
 	SliderSet *m_pSldDefog;
 	SliderSet *m_pSldKneeLow;
 	SliderSet *m_pSldKneeHigh;
+
+	Editbox *m_pEdtCoord; // edit box for coord display
+	Editbox *m_pEdtColor; // edit box for color display
 
 	ImageViewer *m_pViewer;
 };

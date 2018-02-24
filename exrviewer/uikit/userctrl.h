@@ -345,6 +345,20 @@ protected:
 	HWND m_hParent;
 };
 
+class Editbox : public UserWnd
+{
+public:
+	Editbox(int x = 0, int y = 0, int w = 0, int h = 0, bool readonly = false, LPWSTR caption = nullptr, HWND hParent = nullptr, HINSTANCE inst = nullptr) :
+		UserWnd(L"EDIT", caption, x, y, w, h, hParent, inst, 
+			WS_CHILD | WS_VISIBLE | /*WS_BORDER |*/ ES_LEFT | (readonly? ES_READONLY: 0), WS_EX_CLIENTEDGE, 0)
+	{
+	}
+	virtual void SetText(PWSTR txt)
+	{
+		Edit_SetText(m_hWnd, txt);
+	}
+};
+
 class Groupbox : public UserWnd
 {
 public:

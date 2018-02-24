@@ -175,6 +175,7 @@ void OnCreate(HWND hWnd)
 	g_pImgWnd = new ImgPanel(0, 0, 0, 0, hWnd, hInst);
 	g_pViewer = new ImageViewer(g_pImgWnd->GetHWND());
 	g_pViewer->SetMenuMan(g_pMenuMan);
+	g_pViewer->SetPanel(g_pPanel);
 	g_pPanel->SetViewer(g_pViewer);
 	g_pImgWnd->SetViewer(g_pViewer);
 
